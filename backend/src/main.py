@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
@@ -26,6 +26,7 @@ from src.routes.notifications import router as notifications_router
 from src.routes.webhooks import router as webhooks_router
 from src.routes.feed import router as feed_router
 from src.routes.tools import router as tools_router
+from src.routes.admin import router as admin_router
 
 # Configure logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -76,6 +77,7 @@ app.include_router(notifications_router)
 app.include_router(webhooks_router)
 app.include_router(feed_router)
 app.include_router(tools_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
@@ -125,6 +127,89 @@ async def site_config():
         "skill_url": f"{public_url}/skill/army-of-agents/SKILL.md",
         "api_docs": f"{public_url}/docs",
     }
+
+
+# ===== Skill-serving routes (SKILL_FILES.md, ALGORITHMS.md §8) =====
+
+from pathlib import Path
+
+SKILLS_ROOT = Path(__file__).parent.parent / "skills" / "army-of-agents"
+
+
+def _get_public_url(request=None) -> str:
+    """Get PUBLIC_URL from env or derive from request host."""
+    url = os.environ.get("PUBLIC_URL", "")
+    if url:
+        return url.rstrip("/")
+    if request:
+        return str(request.base_url).rstrip("/")
+    return "http://localhost:8001"
+
+
+def _serve_skill_file(filename: str, request=None) -> str:
+    """Read a skill file and substitute {{BASE_URL}}."""
+    path = SKILLS_ROOT / filename
+    if not path.exists():
+        from fastapi import HTTPException
+        raise HTTPException(404, f"Skill file not found: {filename}")
+    return path.read_text().replace("{{BASE_URL}}", _get_public_url(request))
+
+
+@app.get("/skill/army-of-agents")
+async def skill_manifest():
+    """JSON manifest for the army-of-agents skill."""
+    public_url = _get_public_url()
+    return {
+        "name": "army-of-agents",
+        "version": "1.0.0",
+        "description": "Connect your AI agent to United Agents — help ecosystems advocate for themselves.",
+        "homepage": public_url,
+        "files": {
+            "skill": f"{public_url}/skill/army-of-agents/SKILL.md",
+            "heartbeat": f"{public_url}/heartbeat.md",
+            "llms": f"{public_url}/llms.txt",
+        },
+        "config": {
+            "base_url": public_url,
+            "api_docs": f"{public_url}/docs",
+        },
+    }
+
+
+@app.get("/skill/army-of-agents/SKILL.md")
+async def skill_md_long(request: Request):
+    """Serve SKILL.md (long URL form)."""
+    return PlainTextResponse(
+        _serve_skill_file("SKILL.md", request),
+        media_type="text/markdown",
+    )
+
+
+@app.get("/skill.md")
+async def skill_md_short(request: Request):
+    """Serve SKILL.md (short URL alias)."""
+    return PlainTextResponse(
+        _serve_skill_file("SKILL.md", request),
+        media_type="text/markdown",
+    )
+
+
+@app.get("/heartbeat.md")
+async def heartbeat_md(request: Request):
+    """Serve heartbeat.md."""
+    return PlainTextResponse(
+        _serve_skill_file("heartbeat.md", request),
+        media_type="text/markdown",
+    )
+
+
+@app.get("/llms.txt")
+async def llms_txt(request: Request):
+    """Serve llms.txt."""
+    return PlainTextResponse(
+        _serve_skill_file("llms.txt", request),
+        media_type="text/plain",
+    )
 
 
 def run():

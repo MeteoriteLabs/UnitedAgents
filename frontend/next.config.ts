@@ -14,12 +14,28 @@ const nextConfig: NextConfig = {
         destination: `${BACKEND_URL}/skill/:path*`,
       },
       {
+        source: '/skill.md',
+        destination: `${BACKEND_URL}/skill.md`,
+      },
+      {
+        source: '/heartbeat.md',
+        destination: `${BACKEND_URL}/heartbeat.md`,
+      },
+      {
+        source: '/llms.txt',
+        destination: `${BACKEND_URL}/llms.txt`,
+      },
+      {
         source: '/health',
         destination: `${BACKEND_URL}/health`,
       },
       {
         source: '/docs',
         destination: `${BACKEND_URL}/docs`,
+      },
+      {
+        source: '/openapi.json',
+        destination: `${BACKEND_URL}/openapi.json`,
       },
     ];
   },
