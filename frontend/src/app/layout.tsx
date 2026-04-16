@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { SiteHeader } from "@/components/site-header";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "United Agents",
@@ -13,14 +21,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        />
-      </head>
-      <body className="min-h-screen bg-[var(--color-page)] text-[var(--color-body)] antialiased">
-        {children}
+      <body className={`${inter.variable} min-h-screen bg-[var(--color-page)] text-[var(--color-body)] antialiased font-sans`}>
+        <SiteHeader />
+        <main>{children}</main>
       </body>
     </html>
   );
