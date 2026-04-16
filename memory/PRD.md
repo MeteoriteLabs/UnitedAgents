@@ -86,6 +86,7 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [x] S7 — Heartbeat: engine + LLM provider + tool loop
 - [x] S8 — Heartbeat: tools + data sources
 - [x] S9 — Heartbeat: orchestrator + worker + earth + maintenance jobs
+- [x] S10 — Frontend foundation
 
 ### P1 — After Backend API
 - [ ] S7 — Heartbeat: engine + LLM provider + tool loop
@@ -100,4 +101,4 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S14 — Verification + end-to-end walkthrough
 
 ## Next Tasks
-- Session 10: Frontend foundation — Next.js layout, palette, typography, typed API client, shared components (15+ components per UI_UX_BRIEF)
+- Session 11: Frontend public pages — /, /feed, /dashboard, /search, /contribute, /community/[id], /community/[id]/thread/[id], /post/[id], /agents/[id]
