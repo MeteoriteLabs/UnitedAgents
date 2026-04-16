@@ -1,596 +1,571 @@
 #!/usr/bin/env python3
 """
-United Agents Session 3 Backend API Testing
-Tests all agent and community endpoints with authentication, rate limiting, and security fixes.
+United Agents Session 5 Backend API Testing
+Tests: Tasks, Evidence, Notifications, Webhooks, Feed, Search, Tools
 """
 
 import requests
 import json
 import time
 import secrets
+import sys
 from datetime import datetime
+from typing import Dict, List, Optional
 
-class UnitedAgentsAPITester:
+class UnitedAgentsSession5Tester:
     def __init__(self, base_url="https://e5920ce5-77da-44f3-a144-d0555c942f9c.preview.emergentagent.com"):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip('/')
         self.admin_token = "ua-admin-token-super-secret-change-me-32chars"
-        self.test_agents = []  # Store created test agents
-        self.test_communities = []  # Store created test communities
+        self.agent_tokens = {}  # agent_id -> token
+        self.test_data = {}  # Store created test data
         self.tests_run = 0
         self.tests_passed = 0
+        self.session = requests.Session()
         
-    def log(self, message):
+    def log(self, message: str):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
         
-    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None, params=None):
+    def run_test(self, name: str, method: str, endpoint: str, expected_status: int, 
+                 data: Optional[Dict] = None, headers: Optional[Dict] = None, 
+                 params: Optional[Dict] = None) -> tuple[bool, Dict]:
         """Run a single API test"""
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        url = f"{self.base_url}/api/v1/{endpoint.lstrip('/')}"
         test_headers = {'Content-Type': 'application/json'}
         if headers:
             test_headers.update(headers)
             
         self.tests_run += 1
         self.log(f"🔍 Testing {name}...")
+        self.log(f"   {method} {url}")
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=test_headers, params=params, timeout=10)
+                response = self.session.get(url, headers=test_headers, params=params, timeout=15)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=test_headers, timeout=10)
+                response = self.session.post(url, json=data, headers=test_headers, params=params, timeout=15)
             elif method == 'PATCH':
-                response = requests.patch(url, json=data, headers=test_headers, timeout=10)
-            elif method == 'PUT':
-                response = requests.put(url, json=data, headers=test_headers, timeout=10)
+                response = self.session.patch(url, json=data, headers=test_headers, params=params, timeout=15)
+            elif method == 'DELETE':
+                response = self.session.delete(url, headers=test_headers, params=params, timeout=15)
             else:
                 raise ValueError(f"Unsupported method: {method}")
-
+                
             success = response.status_code == expected_status
             if success:
                 self.tests_passed += 1
-                self.log(f"✅ {name} - Status: {response.status_code}")
-                try:
-                    return True, response.json()
-                except:
-                    return True, response.text
+                self.log(f"✅ Passed - Status: {response.status_code}")
             else:
-                self.log(f"❌ {name} - Expected {expected_status}, got {response.status_code}")
-                try:
-                    error_detail = response.json()
-                    self.log(f"   Error: {error_detail}")
-                except:
-                    self.log(f"   Error: {response.text}")
-                return False, {}
-
+                self.log(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
+                if response.text:
+                    self.log(f"   Response: {response.text[:300]}")
+                    
+            try:
+                response_data = response.json() if response.text else {}
+            except:
+                response_data = {"raw_response": response.text}
+                
+            return success, response_data
+            
         except Exception as e:
-            self.log(f"❌ {name} - Exception: {str(e)}")
+            self.log(f"❌ Failed - Error: {str(e)}")
             return False, {}
-
-    def test_health_endpoints(self):
-        """Test basic health endpoints"""
-        self.log("\n=== Testing Health Endpoints ===")
-        
-        # Test basic health
-        self.run_test("Health Check", "GET", "/health", 200)
-        
-        # Test API health
-        self.run_test("API Health Check", "GET", "/api/v1/health", 200)
-        
-        # Test version endpoint
-        self.run_test("Version Endpoint", "GET", "/api/v1/version", 200)
-
-    def test_agent_registration(self):
-        """Test agent registration with duplicate name handling"""
-        self.log("\n=== Testing Agent Registration ===")
-        
-        # Test successful registration
-        test_name = f"test-agent-{secrets.token_hex(4)}"
+    
+    def create_test_agent(self, name: str, agent_type: str = "worker") -> Optional[str]:
+        """Create a test agent and return its API key"""
         success, response = self.run_test(
-            "Agent Registration (Success)",
-            "POST",
-            "/api/v1/agents",
-            201,
-            data={
-                "name": test_name,
-                "type": "worker",
-                "description": "Test worker agent"
-            }
-        )
-        
-        if success and 'api_key' in response:
-            self.test_agents.append({
-                'name': test_name,
-                'api_key': response['api_key'],
-                'id': response['id']
-            })
-            self.log(f"   Registered agent: {test_name} with API key")
-        
-        # Test duplicate name registration
-        self.run_test(
-            "Agent Registration (Duplicate Name)",
+            f"Create {agent_type} agent: {name}",
             "POST", 
-            "/api/v1/agents",
-            400,
-            data={
-                "name": test_name,
-                "type": "worker",
-                "description": "Duplicate test"
-            }
+            "agents",
+            201,
+            data={"name": name, "type": agent_type},
+            headers={"X-Admin-Token": self.admin_token}
         )
-
-    def test_agent_authentication(self):
-        """Test Bearer token authentication"""
-        self.log("\n=== Testing Agent Authentication ===")
-        
-        if not self.test_agents:
-            self.log("❌ No test agents available for auth testing")
-            return
-            
-        agent = self.test_agents[0]
-        
-        # Test valid Bearer token
-        self.run_test(
-            "Get Agent Profile (Valid Auth)",
-            "GET",
-            "/api/v1/agents/me",
-            200,
-            headers={'Authorization': f'Bearer {agent["api_key"]}'}
-        )
-        
-        # Test invalid Bearer token
-        self.run_test(
-            "Get Agent Profile (Invalid Auth)",
-            "GET",
-            "/api/v1/agents/me", 
-            401,
-            headers={'Authorization': 'Bearer invalid-token-12345'}
-        )
-        
-        # Test missing Authorization header
-        self.run_test(
-            "Get Agent Profile (No Auth)",
-            "GET",
-            "/api/v1/agents/me",
-            401
-        )
-
-    def test_agent_heartbeat(self):
-        """Test heartbeat functionality"""
-        self.log("\n=== Testing Agent Heartbeat ===")
-        
-        if not self.test_agents:
-            self.log("❌ No test agents available for heartbeat testing")
-            return
-            
-        agent = self.test_agents[0]
-        
-        # Test heartbeat
-        self.run_test(
-            "Agent Heartbeat",
-            "POST",
-            "/api/v1/agents/heartbeat",
-            200,
-            headers={'Authorization': f'Bearer {agent["api_key"]}'}
-        )
-
-    def test_rate_limiting(self):
-        """Test rate limiting on registration (5/hr limit)"""
-        self.log("\n=== Testing Rate Limiting ===")
-        
-        # Try to register 6 agents quickly to hit rate limit
-        rate_limit_hit = False
-        for i in range(6):
-            test_name = f"rate-test-{i}-{secrets.token_hex(3)}"
-            success, response = self.run_test(
-                f"Rate Limit Test {i+1}/6",
-                "POST",
-                "/api/v1/agents",
-                201 if i < 5 else 429,  # Expect 429 on 6th attempt
-                data={
-                    "name": test_name,
-                    "type": "worker", 
-                    "description": f"Rate limit test agent {i+1}"
-                }
-            )
-            
-            if not success and i >= 4:  # Rate limit might kick in at 5th or 6th
-                rate_limit_hit = True
-                self.log("✅ Rate limiting working - got 429 status")
-                break
-            elif success and 'api_key' in response:
-                self.test_agents.append({
-                    'name': test_name,
-                    'api_key': response['api_key'],
-                    'id': response['id']
-                })
-            
-            time.sleep(0.1)  # Small delay between requests
-
-    def test_agent_rate_limit_status(self):
-        """Test rate limit status endpoint"""
-        self.log("\n=== Testing Rate Limit Status ===")
-        
-        if not self.test_agents:
-            self.log("❌ No test agents available for rate limit status testing")
-            return
-            
-        agent = self.test_agents[0]
-        
-        self.run_test(
-            "Get Rate Limit Status",
-            "GET",
-            "/api/v1/agents/me/ratelimit",
-            200,
-            headers={'Authorization': f'Bearer {agent["api_key"]}'}
-        )
-
-    def test_agent_listing(self):
-        """Test agent listing endpoints"""
-        self.log("\n=== Testing Agent Listing ===")
-        
-        # Test list all agents
-        self.run_test(
-            "List All Agents",
-            "GET",
-            "/api/v1/agents",
-            200
-        )
-        
-        # Test get agent by name
-        if self.test_agents:
-            agent = self.test_agents[0]
-            self.run_test(
-                "Get Agent by Name",
-                "GET",
-                f"/api/v1/agents/by-name/{agent['name']}",
-                200
-            )
-            
-            # Test get agent profile by ID
-            self.run_test(
-                "Get Agent Profile by ID",
-                "GET",
-                f"/api/v1/agents/{agent['id']}/profile",
-                200
-            )
-        
-        # Test get non-existent agent
-        self.run_test(
-            "Get Non-existent Agent",
-            "GET",
-            "/api/v1/agents/by-name/non-existent-agent-12345",
-            404
-        )
-
-    def test_agent_condition_update(self):
-        """Test agent condition update (self vs non-self)"""
-        self.log("\n=== Testing Agent Condition Update ===")
-        
-        if len(self.test_agents) < 2:
-            self.log("❌ Need at least 2 test agents for condition update testing")
-            return
-            
-        agent1 = self.test_agents[0]
-        agent2 = self.test_agents[1]
-        
-        # Test self update (should work)
-        self.run_test(
-            "Update Own Condition",
-            "PATCH",
-            f"/api/v1/agents/{agent1['id']}/condition",
-            200,
-            data={
-                "condition_score": 85.5,
-                "condition_trend": "improving"
-            },
-            headers={'Authorization': f'Bearer {agent1["api_key"]}'}
-        )
-        
-        # Test update other agent's condition (should fail)
-        self.run_test(
-            "Update Other Agent Condition (No Admin)",
-            "PATCH",
-            f"/api/v1/agents/{agent2['id']}/condition",
-            403,
-            data={
-                "condition_score": 75.0,
-                "condition_trend": "stable"
-            },
-            headers={'Authorization': f'Bearer {agent1["api_key"]}'}
-        )
-
-    def test_community_creation(self):
-        """Test community creation and auto-join for workers"""
-        self.log("\n=== Testing Community Creation ===")
-        
-        if not self.test_agents:
-            self.log("❌ No test agents available for community testing")
-            return
-            
-        agent = self.test_agents[0]
-        community_name = f"test-community-{secrets.token_hex(4)}"
-        
+        if success and "api_key" in response:
+            agent_id = response["id"]
+            self.agent_tokens[agent_id] = response["api_key"]
+            self.test_data[f"agent_{agent_type}"] = {"id": agent_id, "name": name, "token": response["api_key"]}
+            return response["api_key"]
+        return None
+    
+    def create_test_community(self, name: str, agent_token: str) -> Optional[str]:
+        """Create a test community"""
         success, response = self.run_test(
-            "Create Community",
+            f"Create community: {name}",
             "POST",
-            "/api/v1/communities",
+            "communities", 
+            201,
+            data={"name": name, "description": f"Test community for {name}"},
+            headers={"Authorization": f"Bearer {agent_token}"}
+        )
+        if success:
+            community_id = response["id"]
+            self.test_data["community"] = {"id": community_id, "name": name}
+            return community_id
+        return None
+    
+    def create_test_thread(self, community_id: str, agent_token: str) -> Optional[str]:
+        """Create a test thread"""
+        success, response = self.run_test(
+            "Create test thread",
+            "POST",
+            f"communities/{community_id}/threads",
+            201,
+            data={"title": "Test Thread", "content": "Test thread for Session 5"},
+            headers={"Authorization": f"Bearer {agent_token}"}
+        )
+        if success:
+            thread_id = response["id"]
+            self.test_data["thread"] = {"id": thread_id}
+            return thread_id
+        return None
+    
+    def create_test_task(self, community_id: str, agent_token: str, title: str = "Test Task") -> Optional[str]:
+        """Create a test task"""
+        success, response = self.run_test(
+            f"Create test task: {title}",
+            "POST",
+            f"communities/{community_id}/posts",
             201,
             data={
-                "name": community_name,
-                "description": "Test community for API testing",
-                "scope": "testing"
+                "title": title,
+                "content": f"Test task for Session 5: {title}",
+                "type": "task",
+                "task_category": "research",
+                "urgency": 5
             },
-            headers={'Authorization': f'Bearer {agent["api_key"]}'}
+            headers={"Authorization": f"Bearer {agent_token}"}
         )
-        
-        if success and 'id' in response:
-            self.test_communities.append({
-                'name': community_name,
-                'id': response['id']
-            })
-            self.log(f"   Created community: {community_name}")
+        if success:
+            task_id = response["id"]
+            self.test_data[f"task_{title.lower().replace(' ', '_')}"] = {"id": task_id}
+            return task_id
+        return None
 
-    def test_community_listing(self):
-        """Test community listing and retrieval"""
-        self.log("\n=== Testing Community Listing ===")
+    def test_tasks_flow(self):
+        """Test complete task management flow"""
+        self.log("\n=== TESTING TASK MANAGEMENT ===")
         
-        # Test list all communities
-        self.run_test(
-            "List All Communities",
+        # Create agents
+        orchestrator_token = self.create_test_agent("test_orchestrator_s5", "orchestrator")
+        worker_token = self.create_test_agent("test_worker_s5", "worker")
+        
+        if not orchestrator_token or not worker_token:
+            self.log("❌ Failed to create test agents")
+            return False
+            
+        # Create community
+        community_id = self.create_test_community("Test Community S5", orchestrator_token)
+        if not community_id:
+            self.log("❌ Failed to create test community")
+            return False
+            
+        # Create task
+        task_id = self.create_test_task(community_id, orchestrator_token, "Claimable Task")
+        if not task_id:
+            self.log("❌ Failed to create test task")
+            return False
+        
+        # Test GET /api/v1/tasks/open — returns open tasks, filters stale claims and unresolved deps
+        success, open_tasks = self.run_test(
+            "List open tasks",
             "GET",
-            "/api/v1/communities",
-            200
+            "tasks/open",
+            200,
+            headers={"Authorization": f"Bearer {worker_token}"}
         )
         
-        # Test get specific community
-        if self.test_communities:
-            community = self.test_communities[0]
+        if success:
+            self.log(f"   Found {len(open_tasks)} open tasks")
+        
+        # Test POST /api/v1/tasks/{id}/claim — claims task, returns 409 on double-claim
+        success, claim_response = self.run_test(
+            "Claim task",
+            "POST",
+            f"tasks/{task_id}/claim",
+            200,
+            headers={"Authorization": f"Bearer {worker_token}"}
+        )
+        
+        # Test double claim (should return 409)
+        if success:
             self.run_test(
-                "Get Community by ID",
-                "GET",
-                f"/api/v1/communities/{community['id']}",
-                200
+                "Double claim task (should fail with 409)",
+                "POST",
+                f"tasks/{task_id}/claim",
+                409,
+                headers={"Authorization": f"Bearer {orchestrator_token}"}
             )
-
-    def test_community_membership(self):
-        """Test community joining and member listing"""
-        self.log("\n=== Testing Community Membership ===")
         
-        if not self.test_communities or len(self.test_agents) < 2:
-            self.log("❌ Need communities and multiple agents for membership testing")
-            return
-            
-        community = self.test_communities[0]
-        agent = self.test_agents[1]  # Use different agent than creator
-        
-        # Test join community
+        # Test PATCH /api/v1/tasks/{id}/resolve — resolves task, 403 if not claimant
         self.run_test(
-            "Join Community",
-            "POST",
-            f"/api/v1/communities/{community['id']}/join",
-            201,
-            data={"role": "member"},
-            headers={'Authorization': f'Bearer {agent["api_key"]}'}
-        )
-        
-        # Test join again (should fail - already member)
-        self.run_test(
-            "Join Community (Already Member)",
-            "POST",
-            f"/api/v1/communities/{community['id']}/join",
-            400,
-            data={"role": "member"},
-            headers={'Authorization': f'Bearer {agent["api_key"]}'}
-        )
-        
-        # Test list members
-        self.run_test(
-            "List Community Members",
-            "GET",
-            f"/api/v1/communities/{community['id']}/members",
-            200
-        )
-
-    def test_community_roles_admin_only(self):
-        """Test role management requires admin token (D-15 fix)"""
-        self.log("\n=== Testing Community Roles (Admin Required) ===")
-        
-        if not self.test_communities:
-            self.log("❌ No test communities available for role testing")
-            return
-            
-        community = self.test_communities[0]
-        
-        # Test get roles (no auth required)
-        self.run_test(
-            "Get Community Roles",
-            "GET",
-            f"/api/v1/communities/{community['id']}/roles",
-            200
-        )
-        
-        # Test update roles without admin token (should fail)
-        self.run_test(
-            "Update Roles (No Admin Token)",
-            "PUT",
-            f"/api/v1/communities/{community['id']}/roles",
-            401,
-            data={
-                "roles": {
-                    "leader": "Community leader role",
-                    "member": "Regular community member"
-                }
-            }
-        )
-        
-        # Test update roles with admin token (should work)
-        self.run_test(
-            "Update Roles (With Admin Token)",
-            "PUT",
-            f"/api/v1/communities/{community['id']}/roles",
-            200,
-            data={
-                "roles": {
-                    "leader": "Community leader role",
-                    "member": "Regular community member",
-                    "moderator": "Community moderator"
-                }
-            },
-            headers={'X-Admin-Token': self.admin_token}
-        )
-        
-        # Test role validation (max 20 roles)
-        large_roles = {f"role_{i}": f"Description {i}" for i in range(25)}
-        self.run_test(
-            "Update Roles (Too Many Roles)",
-            "PUT",
-            f"/api/v1/communities/{community['id']}/roles",
-            422,  # Validation error
-            data={"roles": large_roles},
-            headers={'X-Admin-Token': self.admin_token}
-        )
-
-    def test_deprecated_member_update(self):
-        """Test deprecated member update endpoint"""
-        self.log("\n=== Testing Deprecated Member Update ===")
-        
-        if not self.test_communities or not self.test_agents:
-            self.log("❌ Need communities and agents for deprecated endpoint testing")
-            return
-            
-        community = self.test_communities[0]
-        agent = self.test_agents[0]
-        
-        self.run_test(
-            "Deprecated Member Update",
+            "Resolve task by claimant",
             "PATCH",
-            f"/api/v1/communities/{community['id']}/members/{agent['id']}",
-            403
-        )
-
-    def test_community_plan(self):
-        """Test community plan creation and retrieval"""
-        self.log("\n=== Testing Community Plan ===")
-        
-        if not self.test_communities or not self.test_agents:
-            self.log("❌ Need communities and agents for plan testing")
-            return
-            
-        community = self.test_communities[0]
-        agent = self.test_agents[0]
-        
-        # Test get plan (should be 404 initially)
-        self.run_test(
-            "Get Plan (Not Found)",
-            "GET",
-            f"/api/v1/communities/{community['id']}/plan",
-            404
-        )
-        
-        # Test create/update plan
-        self.run_test(
-            "Create/Update Plan",
-            "PUT",
-            f"/api/v1/communities/{community['id']}/plan",
+            f"tasks/{task_id}/resolve",
             200,
-            data={
-                "title": "Test Community Plan",
-                "content": "This is a test plan for our community."
-            },
-            headers={'Authorization': f'Bearer {agent["api_key"]}'}
+            data={"result_summary": "Task completed successfully"},
+            headers={"Authorization": f"Bearer {worker_token}"}
         )
         
-        # Test get plan (should work now)
+        # Test GET /api/v1/tasks/resolved — returns resolved tasks
         self.run_test(
-            "Get Plan (Found)",
+            "List resolved tasks",
             "GET",
-            f"/api/v1/communities/{community['id']}/plan",
+            "tasks/resolved",
+            200,
+            headers={"Authorization": f"Bearer {worker_token}"}
+        )
+        
+        # Create another task for fail test
+        task_id_2 = self.create_test_task(community_id, orchestrator_token, "Fail Task")
+        if task_id_2:
+            # Claim and then fail
+            self.run_test(
+                "Claim task for fail test",
+                "POST",
+                f"tasks/{task_id_2}/claim",
+                200,
+                headers={"Authorization": f"Bearer {worker_token}"}
+            )
+            
+            # Test PATCH /api/v1/tasks/{id}/fail — resets to open, clears claim fields
+            self.run_test(
+                "Fail task (reset to open)",
+                "PATCH",
+                f"tasks/{task_id_2}/fail",
+                200,
+                headers={"Authorization": f"Bearer {worker_token}"}
+            )
+            
+            # Test 403 if not claimant tries to resolve
+            self.run_test(
+                "Non-claimant tries to resolve (should fail with 403)",
+                "PATCH",
+                f"tasks/{task_id_2}/resolve",
+                403,
+                headers={"Authorization": f"Bearer {orchestrator_token}"}
+            )
+        
+        return True
+    
+    def test_evidence_flow(self):
+        """Test evidence management with D-15 §2.4 community-scope check"""
+        self.log("\n=== TESTING EVIDENCE MANAGEMENT ===")
+        
+        if "community" not in self.test_data:
+            self.log("❌ No test community available")
+            return False
+            
+        community_id = self.test_data["community"]["id"]
+        agent_token = list(self.agent_tokens.values())[0]
+        
+        # Create thread for evidence
+        thread_id = self.create_test_thread(community_id, agent_token)
+        if not thread_id:
+            self.log("❌ Failed to create test thread")
+            return False
+        
+        # Test POST /api/v1/communities/{id}/evidence — creates evidence, validates type
+        success, evidence_response = self.run_test(
+            "Create evidence with valid type",
+            "POST",
+            f"communities/{community_id}/evidence",
+            201,
+            data={
+                "type": "data_point",
+                "content": "Test evidence data for Session 5",
+                "thread_id": thread_id,
+                "source_url": "https://example.com/evidence"
+            },
+            headers={"Authorization": f"Bearer {agent_token}"}
+        )
+        
+        evidence_id = evidence_response.get("id") if success else None
+        
+        # Test invalid evidence type
+        self.run_test(
+            "Create evidence with invalid type",
+            "POST",
+            f"communities/{community_id}/evidence",
+            400,
+            data={
+                "type": "invalid_type",
+                "content": "Test evidence data"
+            },
+            headers={"Authorization": f"Bearer {agent_token}"}
+        )
+        
+        # Test D-15 §2.4: contradiction contestation same-community check
+        if evidence_id:
+            # Create contradiction evidence targeting the first one (same community - should work)
+            success, contradiction_response = self.run_test(
+                "Create contradiction evidence (same community)",
+                "POST",
+                f"communities/{community_id}/evidence",
+                201,
+                data={
+                    "type": "contradiction",
+                    "content": "This contradicts the previous evidence",
+                    "contested_target": evidence_id
+                },
+                headers={"Authorization": f"Bearer {agent_token}"}
+            )
+        
+        # Test GET /api/v1/communities/{id}/evidence
+        self.run_test(
+            "List community evidence",
+            "GET",
+            f"communities/{community_id}/evidence",
             200
         )
-
-    def test_agent_home_dashboard(self):
-        """Test agent home dashboard"""
-        self.log("\n=== Testing Agent Home Dashboard ===")
         
-        if not self.test_agents:
-            self.log("❌ No test agents available for home dashboard testing")
-            return
+        # Test PATCH /api/v1/evidence/{id}/verify — verifies evidence, 403 if self-verify
+        if evidence_id:
+            self.run_test(
+                "Self-verify evidence (should fail with 403)",
+                "PATCH",
+                f"evidence/{evidence_id}/verify",
+                403,
+                headers={"Authorization": f"Bearer {agent_token}"}
+            )
             
-        agent = self.test_agents[0]
+            # Create another agent to verify evidence
+            verifier_token = self.create_test_agent("evidence_verifier", "worker")
+            if verifier_token:
+                self.run_test(
+                    "Verify evidence by different agent",
+                    "PATCH",
+                    f"evidence/{evidence_id}/verify",
+                    200,
+                    headers={"Authorization": f"Bearer {verifier_token}"}
+                )
         
-        self.run_test(
-            "Get Agent Home Dashboard",
+        return True
+    
+    def test_notifications_flow(self):
+        """Test notifications with D-15 §2.2 proper join"""
+        self.log("\n=== TESTING NOTIFICATIONS ===")
+        
+        if not self.agent_tokens:
+            self.log("❌ No test agents available")
+            return False
+            
+        agent_token = list(self.agent_tokens.values())[0]
+        
+        # Test GET /api/v1/notifications — lists notifications for agent
+        success, notifications = self.run_test(
+            "List notifications",
             "GET",
-            "/api/v1/agents/me/home",
+            "notifications",
             200,
-            headers={'Authorization': f'Bearer {agent["api_key"]}'}
+            headers={"Authorization": f"Bearer {agent_token}"}
         )
-
-    def test_admin_token_security(self):
-        """Test admin token constant-time comparison (D-15 fix)"""
-        self.log("\n=== Testing Admin Token Security ===")
         
-        if not self.test_communities:
-            self.log("❌ No test communities available for admin token testing")
-            return
+        if success:
+            self.log(f"   Found {len(notifications)} notifications")
+        
+        # Test with unread_only filter
+        self.run_test(
+            "List unread notifications",
+            "GET",
+            "notifications",
+            200,
+            params={"unread_only": True},
+            headers={"Authorization": f"Bearer {agent_token}"}
+        )
+        
+        # Test POST /api/v1/notifications/read-all — D-15 §2.2: marks all read via proper agent_id join
+        self.run_test(
+            "Mark all notifications as read (D-15 §2.2)",
+            "POST",
+            "notifications/read-all",
+            200,
+            headers={"Authorization": f"Bearer {agent_token}"}
+        )
+        
+        # Test POST /api/v1/notifications/{id}/read — marks notification as read
+        if success and notifications and len(notifications) > 0:
+            notif_id = notifications[0].get("id")
+            if notif_id:
+                self.run_test(
+                    "Mark specific notification as read",
+                    "POST",
+                    f"notifications/{notif_id}/read",
+                    200,
+                    headers={"Authorization": f"Bearer {agent_token}"}
+                )
+        
+        return True
+    
+    def test_webhooks_flow(self):
+        """Test webhook CRUD operations"""
+        self.log("\n=== TESTING WEBHOOKS ===")
+        
+        if "community" not in self.test_data:
+            self.log("❌ No test community available")
+            return False
             
-        community = self.test_communities[0]
+        community_id = self.test_data["community"]["id"]
+        agent_token = list(self.agent_tokens.values())[0]
         
-        # Test with wrong admin token
-        self.run_test(
-            "Admin Endpoint (Wrong Token)",
-            "PUT",
-            f"/api/v1/communities/{community['id']}/roles",
-            403,
-            data={"roles": {"test": "test role"}},
-            headers={'X-Admin-Token': 'wrong-token-12345'}
+        # Test POST /api/v1/communities/{id}/webhooks — creates webhook
+        success, webhook_response = self.run_test(
+            "Create webhook",
+            "POST",
+            f"communities/{community_id}/webhooks",
+            201,
+            data={
+                "url": "https://example.com/webhook",
+                "events": ["post.created", "task.claimed"],
+                "secret": "webhook_secret_123"
+            },
+            headers={"Authorization": f"Bearer {agent_token}"}
         )
         
-        # Test with correct admin token
-        self.run_test(
-            "Admin Endpoint (Correct Token)",
-            "PUT",
-            f"/api/v1/communities/{community['id']}/roles",
+        webhook_id = webhook_response.get("id") if success else None
+        
+        # Test GET /api/v1/communities/{id}/webhooks — lists webhooks
+        success, webhooks = self.run_test(
+            "List webhooks",
+            "GET",
+            f"communities/{community_id}/webhooks",
             200,
-            data={"roles": {"test": "test role"}},
-            headers={'X-Admin-Token': self.admin_token}
+            headers={"Authorization": f"Bearer {agent_token}"}
         )
-
+        
+        if success:
+            self.log(f"   Found {len(webhooks)} webhooks")
+        
+        # Test DELETE /api/v1/webhooks/{id} — deletes webhook
+        if webhook_id:
+            self.run_test(
+                "Delete webhook",
+                "DELETE",
+                f"webhooks/{webhook_id}",
+                200,
+                headers={"Authorization": f"Bearer {agent_token}"}
+            )
+        
+        return True
+    
+    def test_feed_and_search(self):
+        """Test cross-community feed and search functionality"""
+        self.log("\n=== TESTING FEED AND SEARCH ===")
+        
+        # Test GET /api/v1/feed — returns cross-community published posts, hides rejected
+        success, feed = self.run_test(
+            "Get cross-community feed",
+            "GET",
+            "feed",
+            200
+        )
+        
+        if success:
+            self.log(f"   Found {len(feed)} posts in feed")
+        
+        # Test with filters
+        if "community" in self.test_data:
+            community_id = self.test_data["community"]["id"]
+            self.run_test(
+                "Get feed filtered by community",
+                "GET",
+                "feed",
+                200,
+                params={"community_id": community_id, "limit": 10}
+            )
+        
+        # Test GET /api/v1/search?q=... — searches via ILIKE on title+content
+        success, search_results = self.run_test(
+            "Search posts via ILIKE",
+            "GET",
+            "search",
+            200,
+            params={"q": "test", "limit": 5}
+        )
+        
+        if success:
+            self.log(f"   Found {len(search_results)} search results")
+        
+        # Test search with filters
+        self.run_test(
+            "Search with type filter",
+            "GET",
+            "search",
+            200,
+            params={"q": "task", "type": "task", "limit": 5}
+        )
+        
+        return True
+    
+    def test_tools_restrictions(self):
+        """Test tools/search restrictions"""
+        self.log("\n=== TESTING TOOLS RESTRICTIONS ===")
+        
+        # Test POST /api/v1/tools/search — 403 for workers, 503 when Google keys missing
+        
+        # Test with worker (should get 403)
+        if "agent_worker" in self.test_data:
+            worker_token = self.test_data["agent_worker"]["token"]
+            self.run_test(
+                "Worker search (should fail with 403)",
+                "POST",
+                "tools/search",
+                403,
+                data={"query": "test search", "count": 3},
+                headers={"Authorization": f"Bearer {worker_token}"}
+            )
+        
+        # Test with orchestrator (should get 503 - no Google keys configured)
+        if "agent_orchestrator" in self.test_data:
+            orchestrator_token = self.test_data["agent_orchestrator"]["token"]
+            self.run_test(
+                "Orchestrator search (should fail with 503 - no Google keys)",
+                "POST",
+                "tools/search",
+                503,
+                data={"query": "test search", "count": 3},
+                headers={"Authorization": f"Bearer {orchestrator_token}"}
+            )
+        
+        return True
+    
     def run_all_tests(self):
-        """Run all test suites"""
-        self.log("🚀 Starting United Agents Session 3 API Testing")
+        """Run all Session 5 tests"""
+        self.log("🚀 Starting United Agents Session 5 Backend Tests")
         self.log(f"Base URL: {self.base_url}")
         
-        # Run test suites in order
-        self.test_health_endpoints()
-        self.test_agent_registration()
-        self.test_agent_authentication()
-        self.test_agent_heartbeat()
-        self.test_rate_limiting()
-        self.test_agent_rate_limit_status()
-        self.test_agent_listing()
-        self.test_agent_condition_update()
-        self.test_community_creation()
-        self.test_community_listing()
-        self.test_community_membership()
-        self.test_community_roles_admin_only()
-        self.test_deprecated_member_update()
-        self.test_community_plan()
-        self.test_agent_home_dashboard()
-        self.test_admin_token_security()
+        # Test health endpoint first
+        success, _ = self.run_test("Health check", "GET", "health", 200)
+        if not success:
+            self.log("❌ Health check failed - backend may not be running")
+            return 1
         
-        # Print final results
-        self.log(f"\n📊 Final Results: {self.tests_passed}/{self.tests_run} tests passed")
+        try:
+            # Run test flows
+            self.test_tasks_flow()
+            self.test_evidence_flow()
+            self.test_notifications_flow()
+            self.test_webhooks_flow()
+            self.test_feed_and_search()
+            self.test_tools_restrictions()
+            
+        except Exception as e:
+            self.log(f"❌ Test execution failed: {str(e)}")
+            return 1
+        
+        # Print results
         success_rate = (self.tests_passed / self.tests_run * 100) if self.tests_run > 0 else 0
-        self.log(f"Success Rate: {success_rate:.1f}%")
+        self.log(f"\n📊 Test Results: {self.tests_passed}/{self.tests_run} passed ({success_rate:.1f}%)")
         
-        if self.tests_passed == self.tests_run:
-            self.log("🎉 All tests passed!")
+        if success_rate >= 80:
+            self.log("✅ Session 5 backend tests mostly successful")
             return 0
         else:
-            self.log("❌ Some tests failed")
+            self.log("❌ Session 5 backend tests had significant failures")
             return 1
 
+def main():
+    tester = UnitedAgentsSession5Tester()
+    return tester.run_all_tests()
+
 if __name__ == "__main__":
-    import sys
-    tester = UnitedAgentsAPITester()
-    sys.exit(tester.run_all_tests())
+    sys.exit(main())

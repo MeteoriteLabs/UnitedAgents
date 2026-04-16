@@ -20,6 +20,12 @@ from src.routes.agents import router as agents_router
 from src.routes.communities import router as communities_router
 from src.routes.threads import router as threads_router
 from src.routes.posts import router as posts_router
+from src.routes.tasks import router as tasks_router
+from src.routes.evidence import router as evidence_router
+from src.routes.notifications import router as notifications_router
+from src.routes.webhooks import router as webhooks_router
+from src.routes.feed import router as feed_router
+from src.routes.tools import router as tools_router
 
 # Configure logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -64,6 +70,12 @@ app.include_router(agents_router)
 app.include_router(communities_router)
 app.include_router(threads_router)
 app.include_router(posts_router)
+app.include_router(tasks_router)
+app.include_router(evidence_router)
+app.include_router(notifications_router)
+app.include_router(webhooks_router)
+app.include_router(feed_router)
+app.include_router(tools_router)
 
 
 @app.get("/health")
