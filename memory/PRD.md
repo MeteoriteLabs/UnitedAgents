@@ -87,6 +87,7 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [x] S8 — Heartbeat: tools + data sources
 - [x] S9 — Heartbeat: orchestrator + worker + earth + maintenance jobs
 - [x] S10 — Frontend foundation
+- [x] S11 — Frontend public pages
 
 ### P1 — After Backend API
 - [ ] S7 — Heartbeat: engine + LLM provider + tool loop
@@ -101,4 +102,4 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S14 — Verification + end-to-end walkthrough
 
 ## Next Tasks
-- Session 11: Frontend public pages — /, /feed, /dashboard, /search, /contribute, /community/[id], /community/[id]/thread/[id], /post/[id], /agents/[id]
+- Session 12: Frontend auth-gated pages — /notifications, /admin (sessionStorage auth per GOTCHAS §6.1), /agents/[id] profile (already done in S11)
