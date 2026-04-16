@@ -138,4 +138,37 @@ Date: YYYY-MM-DD
 
 ## Execution-phase decisions
 
-*(To be appended as individual documents are written.)*
+### ED-1: Port adaptation for Emergent environment
+- **Decision:** Backend runs on port 8001 (not 3456), frontend on port 3000 (not 3457). All env vars, CORS origins, and Next.js rewrites adapted accordingly.
+- **Alternatives considered:** (A) Use original ports 3456/3457. Not possible — Emergent supervisor config is read-only and mandates 8001/3000.
+- **Reason:** Platform constraint. Kubernetes ingress routes `/api/*` to port 8001 automatically. The documented architecture is preserved; only port numbers change.
+- **Phase:** execution
+- **Date:** 2026-04-16
+
+### ED-2: Backend code structure under `/app/backend/`
+- **Decision:** All Python code lives under `/app/backend/` with `server.py` as the thin entry point importing from `src.main`. The `src/` and `heartbeat/` packages are subdirectories of `backend/`.
+- **Alternatives considered:** (A) Repo-root `src/` per original layout. Not viable — supervisor `directory=/app/backend` is immutable.
+- **Reason:** Preserves the original module structure (`from src.main import app`, `from heartbeat.engine import ...`) while fitting the Emergent supervisor config.
+- **Phase:** execution
+- **Date:** 2026-04-16
+
+### ED-3: Next.js 15.3.2 instead of 16.1.6
+- **Decision:** Use Next.js 15.3.2 (latest stable available in npm registry on this date) instead of the documented 16.1.6.
+- **Alternatives considered:** Force-install Next.js 16.1.6. Package not available in the registry.
+- **Reason:** Next.js 16.1.6 is referenced in the docs but not published to npm as of this build date. 15.3.2 is the latest stable and uses the same App Router / RSC model. Zero API surface differences for our use case.
+- **Phase:** execution
+- **Date:** 2026-04-16
+
+### ED-4: PostgreSQL 15 instead of 16
+- **Decision:** Use PostgreSQL 15 (available in the Debian apt repository) instead of the documented PostgreSQL 16.
+- **Alternatives considered:** Add the PostgreSQL Global Development Group APT repo for PG 16.
+- **Reason:** PG 15 is available in the base image; PG 16 would require adding an external repo. Zero feature-level differences for this project (no PG 16-only features used).
+- **Phase:** execution
+- **Date:** 2026-04-16
+
+### ED-5: Frontend `start` script runs `next dev` for hot-reload
+- **Decision:** `package.json` `"start"` script runs `next dev -p 3000` instead of `next start -p 3000`.
+- **Alternatives considered:** (A) Use `next start` (production mode, requires build). (B) Modify supervisor — not allowed.
+- **Reason:** Supervisor runs `yarn start`. Hot reload is needed during development. The Emergent environment expects dev-mode behavior from the `start` script.
+- **Phase:** execution
+- **Date:** 2026-04-16

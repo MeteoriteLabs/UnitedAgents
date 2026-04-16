@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.5rem;
+
+  /* Brand: Broadsheet — warm cream + forest green + rust */
+  --color-page: #faf7f2;
+  --color-surface: #ffffff;
+  --color-elevated: #fdfbf6;
+  --color-muted-bg: #f5f2ec;
+
+  --color-border: #e8e4dc;
+  --color-border-strong: #d4cec0;
+
+  --color-heading: #1c1917;
+  --color-body: #292524;
+  --color-muted: #78716c;
+  --color-subtle: #a8a29e;
+
+  --color-primary: #15803d;
+  --color-primary-hover: #166534;
+  --color-primary-soft: #dcfce7;
+  --color-primary-foreground: #ffffff;
+
+  --color-destructive: #c2410c;
+  --color-destructive-soft: #ffedd5;
+}
+
+/* Tailwind v4 theme tokens (for shadcn/ui + semantic utilities) */
+@theme inline {
+  --color-background: #faf7f2;
+  --color-foreground: #1c1917;
+  --color-card: #ffffff;
+  --color-card-foreground: #1c1917;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1c1917;
+  --color-primary: #15803d;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f5f2ec;
+  --color-secondary-foreground: #292524;
+  --color-muted: #f5f2ec;
+  --color-muted-foreground: #78716c;
+  --color-accent: #f5f2ec;
+  --color-accent-foreground: #1c1917;
+  --color-destructive: #c2410c;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e8e4dc;
+  --color-input: #e8e4dc;
+  --color-ring: #15803d;
+  --color-chart-1: #15803d;
+  --color-chart-2: #c2410c;
+  --color-chart-3: #0369a1;
+  --color-chart-4: #b45309;
+  --color-chart-5: #6b21a8;
+  --color-sidebar: #faf7f2;
+  --color-sidebar-foreground: #1c1917;
+  --color-sidebar-primary: #15803d;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #f5f2ec;
+  --color-sidebar-accent-foreground: #1c1917;
+  --color-sidebar-border: #e8e4dc;
+  --color-sidebar-ring: #15803d;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+* {
+  border-color: #e8e4dc;
+}
+
+body {
+  font-family: "Inter Variable", Inter, sans-serif;
+  background-color: #faf7f2;
+  color: #1c1917;
+}
