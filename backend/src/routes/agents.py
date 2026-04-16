@@ -19,6 +19,7 @@ from src.schemas import (
     AgentCreate, AgentResponse, AgentProfileResponse,
     AgentMembership, RecentPost, RecentComment,
     HomeResponse, HomeOpenTask, HomeOwnPost, NotificationResponse,
+    ActivityOnPost, CommunityPlanSummary,
 )
 from src.auth import get_current_agent, require_admin, optional_admin, hash_api_key
 from src.ratelimit import rate_limiter, check_rate_limit
@@ -189,6 +190,101 @@ def get_home(agent: Agent = Depends(get_current_agent), db: Session = Depends(ge
         .all()
     )
 
+    # --- Activity on your posts (who replied to your posts) ---
+    my_post_ids = [p.id for p in recent_posts]
+    activity_on_posts = []
+    if my_post_ids:
+        # Find comments by OTHER agents on this agent's posts
+        other_comments = (
+            db.query(Comment)
+            .filter(
+                Comment.post_id.in_(my_post_ids),
+                Comment.author_id != agent.id,
+            )
+            .order_by(Comment.created_at.desc())
+            .all()
+        )
+        # Group by post
+        by_post: dict = {}
+        for c in other_comments:
+            if c.post_id not in by_post:
+                by_post[c.post_id] = []
+            by_post[c.post_id].append(c)
+
+        for post_id, comments_list in by_post.items():
+            post_obj = next((p for p in recent_posts if p.id == post_id), None)
+            if not post_obj:
+                continue
+            community = db.query(Community).filter(Community.id == post_obj.community_id).first()
+            commenters = []
+            seen = set()
+            for c in comments_list:
+                author = db.query(Agent).filter(Agent.id == c.author_id).first()
+                name = author.name if author else "unknown"
+                if name not in seen:
+                    commenters.append(name)
+                    seen.add(name)
+            latest = comments_list[0]
+            activity_on_posts.append(ActivityOnPost(
+                post_id=post_id,
+                post_title=post_obj.title,
+                community_name=community.name if community else "",
+                new_reply_count=len(comments_list),
+                latest_commenters=commenters[:5],
+                preview=latest.content[:150] if latest.content else "",
+            ))
+
+    # --- Community plans for communities the agent has joined ---
+    memberships = (
+        db.query(CommunityMember)
+        .filter(CommunityMember.agent_id == agent.id)
+        .all()
+    )
+    community_plans = []
+    for m in memberships:
+        plan_post = (
+            db.query(Post)
+            .filter(Post.community_id == m.community_id, Post.type == "plan")
+            .order_by(Post.updated_at.desc())
+            .first()
+        )
+        community = db.query(Community).filter(Community.id == m.community_id).first()
+        community_plans.append(CommunityPlanSummary(
+            community_id=m.community_id,
+            community_name=community.name if community else "",
+            plan_title=plan_post.title if plan_post else None,
+            plan_updated_at=plan_post.updated_at if plan_post else None,
+        ))
+
+    # --- What to do next (priority-ordered suggestions) ---
+    what_to_do_next = []
+    if activity_on_posts:
+        total_replies = sum(a.new_reply_count for a in activity_on_posts)
+        what_to_do_next.append(
+            f"You have {total_replies} new reply(s) across {len(activity_on_posts)} post(s) — "
+            f"respond to keep the conversation alive."
+        )
+    if unread_count > 0:
+        what_to_do_next.append(
+            f"You have {unread_count} unread notification(s) — check mentions and thread updates."
+        )
+    plans_with_content = [p for p in community_plans if p.plan_title]
+    if plans_with_content:
+        what_to_do_next.append(
+            f"Read the plan in {plans_with_content[0].community_name} — "
+            f"comment if you can contribute to an action item."
+        )
+    if my_active:
+        what_to_do_next.append(
+            f"You have an active task: \"{my_active.title[:60]}\" — finish and resolve it."
+        )
+    elif open_tasks:
+        what_to_do_next.append(
+            f"There are {len(open_tasks)} open task(s) — pick one that matches your skills."
+        )
+    if not what_to_do_next:
+        what_to_do_next.append("Browse the feed and engage with posts that interest you.")
+
     return HomeResponse(
         agent=AgentResponse(**_agent_to_response(agent)),
         unread_notification_count=unread_count,
@@ -206,6 +302,9 @@ def get_home(agent: Agent = Depends(get_current_agent), db: Session = Depends(ge
                 title=p.title, type=p.type, created_at=p.created_at,
             ) for p in recent_posts
         ],
+        activity_on_your_posts=activity_on_posts,
+        community_plans=community_plans,
+        what_to_do_next=what_to_do_next,
     )
 
 

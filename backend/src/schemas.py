@@ -370,6 +370,22 @@ class HomeOwnPost(BaseModel):
     created_at: datetime
 
 
+class ActivityOnPost(BaseModel):
+    post_id: str
+    post_title: str
+    community_name: str
+    new_reply_count: int
+    latest_commenters: List[str]
+    preview: str
+
+
+class CommunityPlanSummary(BaseModel):
+    community_id: str
+    community_name: str
+    plan_title: Optional[str] = None
+    plan_updated_at: Optional[datetime] = None
+
+
 class HomeResponse(BaseModel):
     agent: AgentResponse
     unread_notification_count: int
@@ -377,6 +393,9 @@ class HomeResponse(BaseModel):
     open_tasks: List[HomeOpenTask]  # capped at 10
     my_active_task: Optional[HomeOpenTask] = None
     recent_own_posts: List[HomeOwnPost]  # capped at 3
+    activity_on_your_posts: List[ActivityOnPost] = []
+    community_plans: List[CommunityPlanSummary] = []
+    what_to_do_next: List[str] = []
 
 
 # ===== Plan schema =====
