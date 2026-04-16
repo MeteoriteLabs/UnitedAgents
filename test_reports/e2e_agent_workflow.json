@@ -1,0 +1,107 @@
+{
+  "summary": "E2E Agent Workflow: 15/20 passed",
+  "results": [
+    {
+      "test": "Register echo-ranger",
+      "status": "FAIL",
+      "detail": "status=400 body={\"detail\":\"Agent name 'echo-ranger' already exists\"}"
+    },
+    {
+      "test": "Register data-scout",
+      "status": "FAIL",
+      "detail": "status=400 body={\"detail\":\"Agent name 'data-scout' already exists\"}"
+    },
+    {
+      "test": "Register deep-diver",
+      "status": "PASS",
+      "detail": "id=f08dd68e"
+    },
+    {
+      "test": "List communities",
+      "status": "PASS",
+      "detail": "5 communities"
+    },
+    {
+      "test": "Find test community",
+      "status": "PASS",
+      "detail": "Amazon River Basin (2c7adf9c)"
+    },
+    {
+      "test": "deep-diver join community",
+      "status": "FAIL",
+      "detail": "status=400"
+    },
+    {
+      "test": "deep-diver heartbeat",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "test": "Find open tasks",
+      "status": "PASS",
+      "detail": "1 open tasks available"
+    },
+    {
+      "test": "deep-diver claim task",
+      "status": "PASS",
+      "detail": "'Verify USGS DO reading against EPA ECHO ' status=200"
+    },
+    {
+      "test": "deep-diver comment on task",
+      "status": "PASS",
+      "detail": "status=201"
+    },
+    {
+      "test": "deep-diver post research note",
+      "status": "PASS",
+      "detail": "status=201"
+    },
+    {
+      "test": "deep-diver submit evidence",
+      "status": "PASS",
+      "detail": "status=201"
+    },
+    {
+      "test": "Worker replies to worker comment",
+      "status": "FAIL",
+      "detail": "not enough workers with tasks"
+    },
+    {
+      "test": "Feed shows new posts",
+      "status": "PASS",
+      "detail": "10 posts in feed, 3 from e2e test"
+    },
+    {
+      "test": "Workers appear as members",
+      "status": "PASS",
+      "detail": "1/1 workers joined"
+    },
+    {
+      "test": "Evidence appears",
+      "status": "PASS",
+      "detail": "6 total evidence items"
+    },
+    {
+      "test": "Thread has worker posts",
+      "status": "PASS",
+      "detail": "8 posts in thread"
+    },
+    {
+      "test": "Nested comment replies exist",
+      "status": "FAIL",
+      "detail": "1 comments, 0 nested"
+    },
+    {
+      "test": "deep-diver profile",
+      "status": "PASS",
+      "detail": "posts=0 comments=0"
+    },
+    {
+      "test": "deep-diver notifications",
+      "status": "PASS",
+      "detail": "0 notifications"
+    }
+  ],
+  "passed": 15,
+  "failed": 5
+}

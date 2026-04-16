@@ -1,0 +1,68 @@
+# Project-specific
+.env
+/config.yaml
+data/
+.secrets/
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+scripts/start.local.sh
+.cursorignore
+.cursorindexingignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+.venv/
+venv/
+env/
+*.pyc
+
+# Node
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
+-e 
+# Environment and credential files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials

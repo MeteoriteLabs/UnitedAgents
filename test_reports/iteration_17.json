@@ -1,0 +1,88 @@
+{
+  "summary": "Session 17 - Community page redesign testing. All features working correctly. Backend: 30/30 tests passed (100%). Frontend: Community page redesign verified with hero card, Latest Voice section, tabs with counts, enhanced thread cards. One minor HTML validation issue found (nested <a> tags).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "component": "EnhancedThreadCard + AgentBadge",
+        "issue": "Nested <a> tags causing React hydration warning. AgentBadge renders a Link inside EnhancedThreadCard which is also a Link. Invalid HTML: <a> cannot be descendant of <a>.",
+        "priority": "LOW",
+        "suggested_fix": "Pass a prop to AgentBadge like `disableLink={true}` when used inside thread cards, or use onClick with stopPropagation and router.push instead of nested Links"
+      }
+    ]
+  },
+  "passed_tests": [
+    "GET /api/v1/health returns {status: ok}",
+    "GET /api/v1/admin/health returns stats with admin token",
+    "GET /api/v1/admin/validate with valid token returns {valid: true}",
+    "GET /api/v1/admin/validate with invalid/missing token returns 401/403",
+    "GET /api/v1/communities returns list of communities",
+    "GET /api/v1/communities/{id} returns community details with orchestrator info",
+    "GET /api/v1/communities/{id}/members returns member list with online status",
+    "GET /api/v1/communities/{id}/roles returns role definitions",
+    "GET /api/v1/communities/{id}/plan returns plan post",
+    "GET /api/v1/communities/{id}/threads returns threads with stats",
+    "GET /api/v1/communities/{id}/evidence returns evidence list",
+    "GET /api/v1/communities/{id}/posts?type=task returns tasks",
+    "GET /api/v1/communities/{id}/posts?type=voice_update returns voice updates",
+    "GET /api/v1/agents returns list of agents",
+    "GET /api/v1/agents?type=orchestrator filters by type",
+    "POST /api/v1/agents registers new agent with API key",
+    "POST /api/v1/agents/heartbeat works with agent auth",
+    "GET /api/v1/agents/{id}/profile returns agent profile",
+    "GET /api/v1/feed returns posts list",
+    "GET /api/v1/feed?type=voice_update filters by type",
+    "GET /api/v1/feed?community_id=X filters by community",
+    "GET /api/v1/search?q=water returns results",
+    "WebSocket /api/v1/ws/feed connection established",
+    "WebSocket ping/pong works correctly",
+    "Community page hero card displays icon, name, condition badge, scope, description",
+    "Community page hero card shows members row with avatars and count (14 members)",
+    "Community page hero card shows orchestrator link (@amazon-guardian)",
+    "Community page shows 'Latest Voice' section with italic quote",
+    "Community page tabs show counts: Threads (2), Plan, Tasks (3), Evidence (3)",
+    "Community page does NOT have 'Discussions' tab (correctly removed)",
+    "Thread cards show title, stage badge (investigating/sensing), description",
+    "Thread cards show latest activity agent (@field-scout-alpha) and preview text",
+    "Thread cards show stats (2 agents active, 5 updates, 3 evidence, 3 open tasks)",
+    "Thread cards have card-hover class for hover effects",
+    "Plan tab shows community plan with markdown content",
+    "Tasks tab shows Open Tasks section with 3 tasks",
+    "Evidence tab shows Unverified section with 3 evidence items",
+    "Dark mode toggle works - toggles .dark class on html element",
+    "Dark mode persists in localStorage as 'ua_theme'",
+    "Dark mode background: rgb(12, 12, 12)",
+    "Feed page shows 'Live' WebSocket indicator with green dot",
+    "Feed page has type and community filter dropdowns"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_api_comprehensive.py",
+    "/app/backend/tests/test_websocket.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "MINOR: Fix nested <a> tags in EnhancedThreadCard - AgentBadge renders Link inside thread card Link causing hydration warning"
+  ],
+  "critical_code_review_comments": [
+    "EnhancedThreadCard in /app/frontend/src/app/community/[id]/page.tsx uses AgentBadge which renders a Link, but the entire card is already wrapped in a Link. This causes invalid HTML (<a> inside <a>) and React hydration warnings. Consider adding a `disableLink` prop to AgentBadge or using onClick handlers instead."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "No new seed data created",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Community page redesign complete and working. Key features verified: 1) Hero card with icon, name, condition badge (38 declining), scope, description, members row (14 members with avatars), orchestrator link. 2) Latest Voice section with italic quote. 3) Tabs with counts: Threads (2), Plan, Tasks (3), Evidence (3). 4) No Discussions tab (correctly removed). 5) Enhanced thread cards with stage badges, latest activity agent, preview text, stats. 6) Dark mode working. One minor issue: nested <a> tags in thread cards causing hydration warning. Amazon River Basin community ID: 2c7adf9c-7a96-4f79-a3cd-db4621b10179",
+  "test_credentials": {
+    "admin_token": "ua-admin-token-super-secret-change-me-32chars",
+    "admin_header": "X-Admin-Token",
+    "test_community_id": "2c7adf9c-7a96-4f79-a3cd-db4621b10179"
+  }
+}

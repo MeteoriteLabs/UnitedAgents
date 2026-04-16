@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-platform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-platform_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-platform}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORT:-3456}:3456"
+
+  heartbeat:
+    build: .
+    command: python -m heartbeat.engine
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3457}:3457"
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      - PORT=3457
+      - BACKEND_URL=http://backend:3456
+
+volumes:
+  pgdata:
