@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   const [query, setQuery] = useState("");
@@ -31,17 +32,20 @@ export function SiteHeader() {
             <Link href="/admin" className="hover:text-[var(--color-heading)] transition-colors" data-testid="nav-admin">Admin</Link>
           </nav>
         </div>
-        <form onSubmit={handleSearch} className="relative" data-testid="search-form">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-subtle)]" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search posts..."
-            className="h-8 w-40 lg:w-56 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-3 text-xs text-[var(--color-body)] placeholder:text-[var(--color-subtle)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] transition-colors"
-            data-testid="search-input"
-          />
-        </form>
+        <div className="flex items-center gap-3">
+          <form onSubmit={handleSearch} className="relative" data-testid="search-form">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-subtle)]" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search posts..."
+              className="h-8 w-36 lg:w-52 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] pl-8 pr-3 text-xs text-[var(--color-body)] placeholder:text-[var(--color-subtle)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] transition-colors"
+              data-testid="search-input"
+            />
+          </form>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );

@@ -28,14 +28,38 @@
   --color-destructive-soft: #ffedd5;
 }
 
+/* Dark mode overrides */
+.dark {
+  --color-page: #0c0c0c;
+  --color-surface: #171717;
+  --color-elevated: #1c1c1c;
+  --color-muted-bg: #1e1e1e;
+
+  --color-border: #2a2a2a;
+  --color-border-strong: #3a3a3a;
+
+  --color-heading: #f5f5f4;
+  --color-body: #d6d3d1;
+  --color-muted: #a8a29e;
+  --color-subtle: #78716c;
+
+  --color-primary: #22c55e;
+  --color-primary-hover: #16a34a;
+  --color-primary-soft: rgba(34, 197, 94, 0.12);
+  --color-primary-foreground: #0c0c0c;
+
+  --color-destructive: #ef4444;
+  --color-destructive-soft: rgba(239, 68, 68, 0.12);
+}
+
 /* Tailwind v4 theme tokens (for shadcn/ui + semantic utilities) */
 @theme inline {
-  --color-background: #faf7f2;
-  --color-foreground: #1c1917;
-  --color-card: #ffffff;
-  --color-card-foreground: #1c1917;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #1c1917;
+  --color-background: var(--color-page);
+  --color-foreground: var(--color-heading);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-heading);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-heading);
   --color-primary: #15803d;
   --color-primary-foreground: #ffffff;
   --color-secondary: #f5f2ec;
@@ -54,8 +78,8 @@
   --color-chart-3: #0369a1;
   --color-chart-4: #b45309;
   --color-chart-5: #6b21a8;
-  --color-sidebar: #faf7f2;
-  --color-sidebar-foreground: #1c1917;
+  --color-sidebar: var(--color-page);
+  --color-sidebar-foreground: var(--color-heading);
   --color-sidebar-primary: #15803d;
   --color-sidebar-primary-foreground: #ffffff;
   --color-sidebar-accent: #f5f2ec;
@@ -77,12 +101,102 @@
   to { height: 0; }
 }
 
+/* ===== Animations ===== */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.35s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out both;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Staggered children animation */
+.stagger-children > * {
+  animation: fade-in-up 0.35s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+
+/* ===== Base ===== */
+
 * {
-  border-color: #e8e4dc;
+  border-color: var(--color-border);
 }
 
 body {
   font-family: "Inter Variable", Inter, sans-serif;
-  background-color: #faf7f2;
-  color: #1c1917;
+  background-color: var(--color-page);
+  color: var(--color-body);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Card hover lift */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.dark .card-hover:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Smooth tab transitions */
+[role="tabpanel"] {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* New post notification pill */
+.ws-new-pill {
+  animation: fade-in-up 0.3s ease-out;
 }

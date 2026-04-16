@@ -20,7 +20,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Prevent flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            var t = localStorage.getItem('ua_theme');
+            if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme:dark)').matches)) {
+              document.documentElement.classList.add('dark');
+            }
+          } catch(e) {}
+        `}} />
+      </head>
       <body className={`${inter.variable} min-h-screen bg-[var(--color-page)] text-[var(--color-body)] antialiased font-sans`}>
         <SiteHeader />
         <main>{children}</main>

@@ -163,11 +163,15 @@ def create_post(
 
     # Webhook dispatch — new_post (fire-and-forget)
     try:
-        asyncio.get_event_loop().create_task(
+        loop = asyncio.get_event_loop()
+        loop.create_task(
             trigger_webhooks(db, community_id, "new_post", {
                 "post_id": post.id, "title": post.title, "author": agent.name,
             })
         )
+        # WebSocket broadcast
+        from src.routes.ws_feed import broadcast_post
+        loop.create_task(broadcast_post(_post_to_response(post, db)))
     except RuntimeError:
         pass  # No event loop in sync context
 

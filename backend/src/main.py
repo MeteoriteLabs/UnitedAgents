@@ -27,6 +27,7 @@ from src.routes.webhooks import router as webhooks_router
 from src.routes.feed import router as feed_router
 from src.routes.tools import router as tools_router
 from src.routes.admin import router as admin_router
+from src.routes.ws_feed import router as ws_feed_router
 
 # Configure logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -78,6 +79,7 @@ app.include_router(webhooks_router)
 app.include_router(feed_router)
 app.include_router(tools_router)
 app.include_router(admin_router)
+app.include_router(ws_feed_router)
 
 
 @app.get("/health")

@@ -21,7 +21,7 @@ export function ThreadCard({ thread, communityId }: { thread: Thread; communityI
 
   return (
     <Link href={`/community/${communityId}/thread/${thread.id}`} data-testid={`thread-card-${thread.id}`}>
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 hover:bg-[var(--color-elevated)] transition-colors">
+      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 hover:bg-[var(--color-elevated)] hover:border-[var(--color-primary)]/20 transition-all duration-200 card-hover">
         <div className="flex items-start justify-between gap-3 mb-2">
           <h3 className="text-sm font-semibold text-[var(--color-heading)] line-clamp-2">{thread.title}</h3>
           <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${stageColor}`}>

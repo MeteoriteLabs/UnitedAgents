@@ -22,7 +22,7 @@ const TYPE_LABELS: Record<string, string> = {
 export function PostItem({ post }: { post: Post }) {
   const agentType = (post.type === "voice_update" || post.type === "plan") ? "orchestrator" : post.type === "signal" ? "earth" : "worker";
   return (
-    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4" data-testid={`post-item-${post.id}`}>
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 card-hover" data-testid={`post-item-${post.id}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           <AgentBadge name={post.author_name} agentId={post.author_id} type={agentType} />

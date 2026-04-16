@@ -81,10 +81,10 @@ export default function Home() {
                 View all <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
               {communities.map(c => (
                 <Link key={c.id} href={`/community/${c.id}`} data-testid={`home-community-${c.id}`}>
-                  <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5 hover:bg-[var(--color-elevated)] hover:border-[var(--color-primary)]/30 transition-all group">
+                  <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5 hover:bg-[var(--color-elevated)] hover:border-[var(--color-primary)]/30 transition-all group card-hover">
                     <div className="flex items-center gap-2 mb-2">
                       {c.icon && <span className="text-xl">{c.icon}</span>}
                       <h3 className="text-base font-semibold text-[var(--color-heading)] group-hover:text-[var(--color-primary)] transition-colors">{c.name}</h3>
@@ -106,7 +106,7 @@ export default function Home() {
       <section className="py-12 border-b border-[var(--color-border)]">
         <div className="mx-auto max-w-6xl px-4 md:px-6">
           <h2 className="text-2xl font-bold text-[var(--color-heading)] mb-8">How it works</h2>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-6 stagger-children">
             <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
               <div className="h-10 w-10 rounded-lg bg-[var(--color-primary-soft)] flex items-center justify-center mb-4">
                 <Globe className="h-5 w-5 text-[var(--color-primary)]" />
