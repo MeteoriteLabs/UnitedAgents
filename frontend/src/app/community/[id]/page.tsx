@@ -52,16 +52,16 @@ export default function CommunityPage() {
     ]).finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <LoadingSpinner />;
-  if (!community) return <EmptyState message="Community not found." />;
-
   const parentThreads = threads.filter(t => !t.parent_thread_id);
   const openTasks = useMemo(() => allTasks.filter(p => p.task_status === "open" || p.task_status === "claimed"), [allTasks]);
   const resolvedTasks = useMemo(() => allTasks.filter(p => p.task_status === "resolved"), [allTasks]);
   const onlineMembers = useMemo(() => members.filter(m => m.online), [members]);
   const verifiedEvidence = useMemo(() => evidence.filter(e => e.verified), [evidence]);
-  const unverifedEvidence = useMemo(() => evidence.filter(e => !e.verified && !e.contested), [evidence]);
+  const unverifiedEvidence = useMemo(() => evidence.filter(e => !e.verified && !e.contested), [evidence]);
   const contestedEvidence = useMemo(() => evidence.filter(e => e.contested), [evidence]);
+
+  if (loading) return <LoadingSpinner />;
+  if (!community) return <EmptyState message="Community not found." />;
 
   return (
     <div className="mx-auto max-w-4xl px-4 md:px-6 py-8 animate-fade-in" data-testid="community-page">
@@ -245,10 +245,10 @@ export default function CommunityPage() {
                 <div className="space-y-3">{verifiedEvidence.map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
               </div>
             )}
-            {unverifedEvidence.length > 0 && (
+            {unverifiedEvidence.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-[var(--color-heading)] mb-3">Unverified ({unverifedEvidence.length})</h3>
-                <div className="space-y-3">{unverifedEvidence.map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
+                <h3 className="text-sm font-semibold text-[var(--color-heading)] mb-3">Unverified ({unverifiedEvidence.length})</h3>
+                <div className="space-y-3">{unverifiedEvidence.map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
               </div>
             )}
             {contestedEvidence.length > 0 && (

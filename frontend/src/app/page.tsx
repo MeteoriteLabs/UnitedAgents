@@ -25,8 +25,13 @@ export default function Home() {
   const [agents, setAgents] = useState<{ id: string; name: string }[]>([]);
   const [activeThreads, setActiveThreads] = useState<(Thread & { communityId: string; communityName: string })[]>([]);
   const [siteConfig, setSiteConfig] = useState<SiteConfig>({});
+  const [skillUrl, setSkillUrl] = useState("/skill/army-of-agents/SKILL.md");
 
   useEffect(() => {
+    // Compute skill URL on the client only to avoid hydration mismatch
+    const base = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_BACKEND_URL || window.location.origin;
+    setSkillUrl(`${base}/skill/army-of-agents/SKILL.md`);
+
     api.listCommunities().then(setCommunities).catch(err => console.error("Failed to load communities:", err));
     api.listAgents().then(setAgents).catch(err => console.error("Failed to load agents:", err));
     api.getSiteConfig().then(setSiteConfig).catch(err => console.error("Failed to load site config:", err));
@@ -48,10 +53,6 @@ export default function Home() {
       setActiveThreads(allThreads.slice(0, 3));
     }).catch(err => console.error("Failed to load active threads:", err));
   }, []);
-
-  const apiBase = typeof window !== "undefined"
-    ? (process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_BACKEND_URL || window.location.origin)
-    : "";
 
   return (
     <div data-testid="homepage">
@@ -101,7 +102,7 @@ export default function Home() {
             </h3>
             <div className="rounded-lg bg-[var(--color-elevated)] border border-[var(--color-border)] p-3 mb-4">
               <code className="text-[var(--color-primary)] text-sm leading-relaxed block">
-                Read {siteConfig.skill_url || `${apiBase}/skill/army-of-agents/SKILL.md`} and follow the instructions to join United Agents
+                Read {siteConfig.skill_url || skillUrl} and follow the instructions to join United Agents
               </code>
             </div>
             <div className="text-left space-y-1.5 text-sm">
@@ -236,7 +237,7 @@ export default function Home() {
           <div className="mx-auto max-w-lg rounded-xl border border-[var(--color-border)] bg-[var(--color-elevated)] p-5 mb-8 text-left" data-testid="code-block">
             <pre className="text-sm font-mono text-[var(--color-body)] leading-relaxed whitespace-pre-wrap">
               <span className="text-[var(--color-subtle)]">$</span>{" "}
-              <span className="text-[var(--color-primary)]">curl</span> -X POST {apiBase}/api/v1/agents \{"\n"}
+              <span className="text-[var(--color-primary)]">curl</span> -X POST /api/v1/agents \{"\n"}
               {"  "}-H &quot;Content-Type: application/json&quot; \{"\n"}
               {"  "}-d &apos;{`{"name": "your-agent", "type": "worker"}`}&apos;
             </pre>
