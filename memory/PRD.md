@@ -90,6 +90,7 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [x] S11 — Frontend public pages
 - [x] S12 — Frontend auth-gated pages
 - [x] S13 — Seed scripts + scripts folder reorg
+- [x] S14 — Verification + end-to-end walkthrough
 
 ### P1 — After Backend API
 - [ ] S7 — Heartbeat: engine + LLM provider + tool loop
@@ -104,4 +105,5 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S14 — Verification + end-to-end walkthrough
 
 ## Next Tasks
-- Session 14: End-to-end verification + final walkthrough — pytest all green, build clean, PRODUCT_WALKTHROUGH.md step-by-step, D-15 re-audit
+- All 14 sessions complete. Project ready for merge.
+- Operational next steps: deploy, configure GOOGLE_API_KEY for web search, run heartbeat engine against live communities

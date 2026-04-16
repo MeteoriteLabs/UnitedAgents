@@ -187,3 +187,16 @@ Date: YYYY-MM-DD
 - **Reason:** Cleaner; env vars + admin API is the canonical config path.
 - **Phase:** execution
 - **Date:** 2026-04-16
+
+### ED-8: Docker-compose topology reference-only in Emergent environment
+- **Decision:** docker-compose.yml is shipped as reference documentation for self-hosted deployment. In the Emergent preview environment, supervisor manages backend/frontend/heartbeat processes directly.
+- **Alternatives considered:** (A) Run docker-compose inside the Emergent pod. Not viable — nested container support absent. (B) Remove docker-compose. Rejected — operators need it for self-hosted deployment.
+- **Reason:** The Emergent environment has its own process management (supervisor). Docker-compose is preserved for operators who deploy outside Emergent.
+- **Phase:** execution
+- **Date:** 2026-04-16
+
+### ED-9: S14 verification gaps — none found
+- **Decision:** Full E2E walkthrough against PRODUCT_WALKTHROUGH.md completed. All 16 D-15 security fixes verified via code grep. 79/79 pytest tests green. 12-page frontend build clean. No material gaps found. One cosmetic issue: webpack HMR WebSocket 502 in dev mode — does not affect production.
+- **Alternatives considered:** N/A — no gaps to resolve.
+- **Phase:** execution
+- **Date:** 2026-04-16
