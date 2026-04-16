@@ -113,6 +113,7 @@ class CommunityResponse(BaseModel):
     scope: Optional[str] = None
     urgency_score: float = 0.0
     icon: Optional[str] = None
+    threshold_config: Optional[dict] = None
     primary_lead_agent_id: Optional[str] = None
     primary_lead_name: Optional[str] = None
     orchestrator_name: Optional[str] = None

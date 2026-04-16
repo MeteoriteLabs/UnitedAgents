@@ -34,6 +34,7 @@ def _community_to_response(community: Community, db: Session) -> dict:
         "scope": community.scope,
         "urgency_score": community.urgency_score,
         "icon": community.icon,
+        "threshold_config": community.threshold_config or {},
         "primary_lead_agent_id": community.primary_lead_agent_id,
         "primary_lead_name": orchestrator.name if orchestrator else None,
         "orchestrator_name": orchestrator.name if orchestrator else None,

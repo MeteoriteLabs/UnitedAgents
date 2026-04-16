@@ -3,6 +3,10 @@
 Per AGENT_SPEC.md §3. Verbatim prompts from PROMPTS.md §1–6.
 D-15 §2.3: scoped exceptions with structured logging (no bare except).
 D-9: thread progression scaffolded but off by default.
+
+Per-community overrides: values are read from community.threshold_config
+(JSONB). Missing keys fall back to DEFAULT_THRESHOLDS below, so existing
+communities behave identically.
 """
 
 import json
@@ -19,18 +23,54 @@ from heartbeat.tools.platform_tools import (
 
 logger = logging.getLogger("heartbeat.jobs.orchestrator")
 
-# Progression thresholds per AGENT_SPEC.md §3.5
-PROGRESSION_THRESHOLDS = {
+# Default progression thresholds per AGENT_SPEC.md §3.5.
+# Communities may override any of these via community.threshold_config (JSONB).
+DEFAULT_THRESHOLDS = {
+    # Thread progression
     "evidence_for_investigating": 3,
     "evidence_for_brainstorm": 5,
     "resolved_for_brainstorm": 3,
     "proposals_for_children": 2,
     "discussion_for_threshold": 3,
     "discussion_for_action_ready": 5,
+    # Cycle gates (previously hardcoded inline)
+    "open_task_ceiling": 3,              # skip CREATE WORK when open tasks >= this
+    "min_evidence_for_first_plan": 3,    # trigger first plan when evidence >= this
+    "min_resolved_for_plan_update": 3,   # re-trigger plan when resolved tasks >= this
+    # Stage toggles (off by default preserves today's behaviour)
+    "thread_progression_enabled": False,
 }
 
-# Thread progression enabled via config (D-9: off by default)
-THREAD_PROGRESSION_ENABLED = False
+# Backwards-compat alias — some tests import this name.
+PROGRESSION_THRESHOLDS = DEFAULT_THRESHOLDS
+
+
+def _cfg(shared: dict, key: str):
+    """Read a threshold from community.threshold_config with fallback to default.
+
+    Always safe: handles missing community, missing threshold_config, or missing key.
+    Coerces numeric strings to int/float so JSON-from-UI input is tolerated.
+    """
+    community = shared.get("community") or {}
+    overrides = community.get("threshold_config") or {}
+    if key in overrides and overrides[key] is not None:
+        val = overrides[key]
+        default = DEFAULT_THRESHOLDS.get(key)
+        # Coerce to same type as the default to avoid str-vs-int surprises
+        if isinstance(default, bool):
+            return bool(val) if not isinstance(val, str) else val.lower() in ("true", "1", "yes")
+        if isinstance(default, int):
+            try:
+                return int(val)
+            except (TypeError, ValueError):
+                return default
+        if isinstance(default, float):
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                return default
+        return val
+    return DEFAULT_THRESHOLDS.get(key)
 
 
 async def orchestrator_heartbeat(agent: dict, client: APIClient, provider: LLMProvider):
@@ -48,11 +88,16 @@ async def orchestrator_heartbeat(agent: dict, client: APIClient, provider: LLMPr
     logger.info(f"[ORCH:{agent_name}] Starting cycle for community {community_id}")
 
     try:
-        # Gather shared context
+        # Gather shared context (includes community.threshold_config)
         shared = await _gather_shared_context(agent, client, community_id, api_key)
         tools_defs = get_tool_definitions("orchestrator")
         handlers = build_tool_handlers(client, agent, community_id)
         agent_output = ""
+
+        # Log effective config for this cycle (helps debug overrides)
+        overrides = (shared.get("community") or {}).get("threshold_config") or {}
+        if overrides:
+            logger.info(f"[ORCH:{agent_name}] Community overrides active: {overrides}")
 
         # ===== Stage 1: VOICE (always) =====
         logger.info(f"[ORCH:{agent_name}] Stage 1: VOICE")
@@ -87,8 +132,8 @@ async def orchestrator_heartbeat(agent: dict, client: APIClient, provider: LLMPr
         else:
             logger.info(f"[ORCH:{agent_name}] Stage 3: PLAN — skipped")
 
-        # ===== Stage 3.5: THREAD MANAGEMENT (conditional, off by default per D-9) =====
-        if THREAD_PROGRESSION_ENABLED:
+        # ===== Stage 3.5: THREAD MANAGEMENT (per-community toggle; off by default) =====
+        if _cfg(shared, "thread_progression_enabled"):
             threads_needing = _find_threads_needing_progression(shared)
             if threads_needing:
                 logger.info(f"[ORCH:{agent_name}] Stage 3.5: THREAD MGMT ({len(threads_needing)} threads)")
@@ -98,18 +143,19 @@ async def orchestrator_heartbeat(agent: dict, client: APIClient, provider: LLMPr
                 except Exception as e:
                     logger.error(f"[ORCH:{agent_name}] Stage 3.5 THREAD MGMT failed: {e}", exc_info=True)
         else:
-            logger.debug(f"[ORCH:{agent_name}] Stage 3.5: THREAD MGMT — disabled (D-9)")
+            logger.debug(f"[ORCH:{agent_name}] Stage 3.5: THREAD MGMT — disabled for this community")
 
         # ===== Stage 4: CREATE WORK (conditional) =====
         open_tasks = shared.get("open_tasks", [])
-        if len(open_tasks) < 3:
-            logger.info(f"[ORCH:{agent_name}] Stage 4: CREATE WORK ({len(open_tasks)} open tasks)")
+        open_ceiling = _cfg(shared, "open_task_ceiling")
+        if len(open_tasks) < open_ceiling:
+            logger.info(f"[ORCH:{agent_name}] Stage 4: CREATE WORK ({len(open_tasks)}/{open_ceiling} open tasks)")
             try:
                 await _stage_create_work(agent, shared, model, provider, tools_defs, handlers)
             except Exception as e:
                 logger.error(f"[ORCH:{agent_name}] Stage 4 CREATE WORK failed: {e}", exc_info=True)
         else:
-            logger.info(f"[ORCH:{agent_name}] Stage 4: CREATE WORK — skipped ({len(open_tasks)} open)")
+            logger.info(f"[ORCH:{agent_name}] Stage 4: CREATE WORK — skipped ({len(open_tasks)}/{open_ceiling} open)")
 
         # ===== Post-cycle =====
         logger.info(f"[ORCH:{agent_name}] Post-cycle: condition scoring + heartbeat ping")
@@ -274,10 +320,13 @@ def _check_plan_trigger(shared: dict) -> tuple:
     resolved = shared.get("resolved_tasks", [])
     contested = [e for e in evidence if e.get("contested")]
 
-    if not plan and len(evidence) >= 3:
-        return True, "No plan exists and >=3 evidence collected"
-    if plan and len(resolved) >= 3:
-        return True, "Plan exists and >=3 tasks resolved since last update"
+    min_ev_first = _cfg(shared, "min_evidence_for_first_plan")
+    min_resolved = _cfg(shared, "min_resolved_for_plan_update")
+
+    if not plan and len(evidence) >= min_ev_first:
+        return True, f"No plan exists and >={min_ev_first} evidence collected"
+    if plan and len(resolved) >= min_resolved:
+        return True, f"Plan exists and >={min_resolved} tasks resolved since last update"
     if contested:
         return True, f"Evidence contains {len(contested)} contested/contradiction items"
     open_tasks = shared.get("open_tasks", [])
@@ -351,18 +400,20 @@ def _build_plan_context(shared: dict) -> str:
 # ===== Stage 3.5: THREAD MANAGEMENT =====
 
 def _find_threads_needing_progression(shared: dict) -> list:
-    """Check threads against progression thresholds."""
+    """Check threads against progression thresholds (per-community via threshold_config)."""
     result = []
+    ev_investigating = _cfg(shared, "evidence_for_investigating")
+    ev_brainstorm = _cfg(shared, "evidence_for_brainstorm")
+
     for thread in shared.get("threads", []):
         stage = thread.get("stage", "sensing")
         ev_count = thread.get("evidence_count", 0)
-        post_count = thread.get("post_count", 0)
         tid = thread.get("id")
 
-        if stage == "sensing" and ev_count >= PROGRESSION_THRESHOLDS["evidence_for_investigating"]:
+        if stage == "sensing" and ev_count >= ev_investigating:
             result.append({"thread": thread, "action": "advance_stage", "target": "investigating",
                           "reason": f"{ev_count} evidence items collected"})
-        elif stage == "investigating" and ev_count >= PROGRESSION_THRESHOLDS["evidence_for_brainstorm"]:
+        elif stage == "investigating" and ev_count >= ev_brainstorm:
             result.append({"thread": thread, "action": "ask_for_proposals",
                           "reason": f"{ev_count} evidence — time for proposals"})
 
