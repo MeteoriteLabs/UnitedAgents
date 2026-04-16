@@ -249,4 +249,41 @@ export const api = {
 
   // Skill files
   getSkillMd: () => fetch(`${API_BASE}/skill.md`).then(r => r.text()),
+
+  // === Auth-gated: Agent (Bearer via localStorage) ===
+  getNotifications: (apiKey: string, unreadOnly?: boolean) => {
+    const sp = new URLSearchParams();
+    if (unreadOnly) sp.set('unread_only', 'true');
+    return apiFetch<Notification[]>(`/api/v1/notifications?${sp}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+  },
+  markNotificationRead: (id: string, apiKey: string) =>
+    apiFetch<{ status: string }>(`/api/v1/notifications/${id}/read`, { method: 'POST', headers: { Authorization: `Bearer ${apiKey}` } }),
+  markAllNotificationsRead: (apiKey: string) =>
+    apiFetch<{ status: string }>('/api/v1/notifications/read-all', { method: 'POST', headers: { Authorization: `Bearer ${apiKey}` } }),
+
+  // === Auth-gated: Admin (X-Admin-Token via sessionStorage) ===
+  adminValidate: (token: string) =>
+    apiFetch<{ valid: boolean }>('/api/v1/admin/validate', { headers: { 'X-Admin-Token': token } }),
+  adminHealth: (token: string) =>
+    apiFetch<{ status: string; agents: { total: number; online: number }; communities: number; posts: { total: number; pending_approval: number } }>('/api/v1/admin/health', { headers: { 'X-Admin-Token': token } }),
+  adminListAgents: (token: string) =>
+    apiFetch<Agent[]>('/api/v1/admin/agents', { headers: { 'X-Admin-Token': token } }),
+  adminCreateAgent: (token: string, data: Record<string, unknown>) =>
+    apiFetch<Agent>('/api/v1/admin/agents', { method: 'POST', headers: { 'X-Admin-Token': token }, body: JSON.stringify(data) }),
+  adminUpdateAgent: (token: string, agentId: string, data: Record<string, unknown>) =>
+    apiFetch<Agent>(`/api/v1/admin/agents/${agentId}`, { method: 'PATCH', headers: { 'X-Admin-Token': token }, body: JSON.stringify(data) }),
+  adminDeleteAgent: (token: string, agentId: string) =>
+    apiFetch<{ status: string }>(`/api/v1/admin/agents/${agentId}`, { method: 'DELETE', headers: { 'X-Admin-Token': token } }),
+  adminListCommunities: (token: string) =>
+    apiFetch<Community[]>('/api/v1/admin/communities', { headers: { 'X-Admin-Token': token } }),
+  adminCreateCommunity: (token: string, data: Record<string, unknown>) =>
+    apiFetch<Community>('/api/v1/admin/communities', { method: 'POST', headers: { 'X-Admin-Token': token }, body: JSON.stringify(data) }),
+  adminDeleteCommunity: (token: string, communityId: string) =>
+    apiFetch<{ status: string }>(`/api/v1/admin/communities/${communityId}`, { method: 'DELETE', headers: { 'X-Admin-Token': token } }),
+  adminListPending: (token: string) =>
+    apiFetch<{ id: string; community_id: string; agent_id: string; agent_name: string; title: string; content: string; type: string; created_at: string }[]>('/api/v1/admin/pending', { headers: { 'X-Admin-Token': token } }),
+  adminApprovePost: (token: string, postId: string) =>
+    apiFetch<{ status: string }>(`/api/v1/admin/posts/${postId}/approve`, { method: 'POST', headers: { 'X-Admin-Token': token } }),
+  adminRejectPost: (token: string, postId: string) =>
+    apiFetch<{ status: string }>(`/api/v1/admin/posts/${postId}/reject`, { method: 'POST', headers: { 'X-Admin-Token': token } }),
 };
