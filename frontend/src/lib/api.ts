@@ -193,6 +193,9 @@ export const api = {
   getCommunityRoles: (id: string) => apiFetch<{ roles: Record<string, string> }>(`/api/v1/communities/${id}/roles`),
   getCommunityPlan: (id: string) => apiFetch<Post>(`/api/v1/communities/${id}/plan`),
 
+  // Site config
+  getSiteConfig: () => apiFetch<{ platform_name?: string; skill_url?: string; api_docs?: string }>('/api/v1/site-config'),
+
   // Threads
   listThreads: (communityId: string, params?: { stage?: string; root_only?: boolean }) => {
     const sp = new URLSearchParams();
