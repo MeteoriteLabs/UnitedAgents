@@ -43,9 +43,27 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - Empty package markers for src/, heartbeat/, tests/, scripts/
 - Execution-phase decisions ED-1 through ED-5 logged
 
+### Session 2 — Database + Alembic (2026-04-16)
+- `src/database.py`: SQLAlchemy engine + session factory, Postgres-only (D-11), no SQLite fallback
+- `src/models.py`: All 10 tables (agents, communities, threads, community_members, posts, comments, evidence, notifications, webhooks, platform_config)
+  - JSONB columns throughout (not legacy TEXT trick)
+  - agents.api_key plaintext column DROPPED (D-15 §1.3), only api_key_hash (NOT NULL, UNIQUE, INDEXED)
+  - community_members has UNIQUE(agent_id, community_id) (GOTCHAS §8.1)
+  - Agent.is_online() guards last_seen is None (GOTCHAS §6.5)
+  - Circular FK (agents ↔ communities) handled with use_alter=True + post_update
+- `src/schemas.py`: All Pydantic schemas per SCHEMAS.md
+  - Backward-compat aliases: ProjectCreate/ProjectUpdate/ProjectResponse, JoinProject
+  - PostCreate accepts both content and body via get_content()
+  - Response payloads expose project_id (from community_id), author_id (from agent_id)
+  - RoleDescriptions validator: max 20 roles, name ≤50 chars, description ≤1000 chars
+- Alembic initial migration: all 10 tables created successfully
+- `tests/conftest.py`: Postgres fixture against united_agents_test DB
+- `tests/test_models.py`: 14 smoke tests (at least one per table) — all passing
+
 ## Prioritized Backlog (14-Session Roadmap)
 ### Completed
 - [x] S1 — Scaffold & infra
+- [x] S2 — Database + Alembic (10 tables, models, schemas, backward-compat aliases)
 
 ### P0 — Next
 - [ ] S2 — Database + Alembic (10 tables, models, schemas, backward-compat aliases)
@@ -67,4 +85,4 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S14 — Verification + end-to-end walkthrough
 
 ## Next Tasks
-- Session 2: SQLAlchemy models for all 10 tables, initial Alembic migration, Pydantic schemas with backward-compat aliases, pytest fixture against PostgreSQL
+- Session 3: Backend auth + agents + communities (FastAPI app scaffold with rate limiting, auth dependencies, CORS, agent registration, community CRUD, role descriptions)
