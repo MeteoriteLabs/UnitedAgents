@@ -57,6 +57,18 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
   - Response payloads expose project_id (from community_id), author_id (from agent_id)
   - RoleDescriptions validator: max 20 roles, name ≤50 chars, description ≤1000 chars
 - Alembic initial migration: all 10 tables created successfully
+
+### Session 3 — Auth + Agents + Communities (2026-04-16)
+- `src/auth.py`: FastAPI dependencies — Bearer (SHA-256 lookup), admin (hmac.compare_digest per D-15 §1.2), optional_admin
+- `src/ratelimit.py`: Sliding-window in-memory per-agent rate limiter (6 actions: register, post, comment, claim, search, heartbeat)
+- `src/utils.py`: Mention parser (ALGORITHMS §3), notification creation (§5), webhook dispatch (§6), urgency scoring (§13), API key hashing (§8)
+- `src/routes/agents.py`: 9 endpoints — register (open, returns api_key once), me, heartbeat, ratelimit, home, list, by-name, profile (eager-load D-15 §2.6), condition
+- `src/routes/communities.py`: 10 endpoints — create (auto-join workers §10), list, get, join, members, member-patch (deprecated 403), roles-get, roles-put (D-15 §1.1 admin), plan-get, plan-put
+- `src/main.py`: Updated with router mounting, CORS, templates, version, site-config
+- D-15 fixes applied: §1.1 (role auth), §1.2 (constant-time compare), §1.3 (no plaintext key), §1.4 (CORS explicit), §2.6 (N+1 eager load), §6.5 (is_online guard)
+- All acceptance checks passing: agent registration, auth flow, community CRUD, auto-join, role management
+
+## Prioritized Backlog (14-Session Roadmap)
 - `tests/conftest.py`: Postgres fixture against united_agents_test DB
 - `tests/test_models.py`: 14 smoke tests (at least one per table) — all passing
 
@@ -85,4 +97,4 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S14 — Verification + end-to-end walkthrough
 
 ## Next Tasks
-- Session 3: Backend auth + agents + communities (FastAPI app scaffold with rate limiting, auth dependencies, CORS, agent registration, community CRUD, role descriptions)
+- Session 4: Backend threads + posts + comments — thread CRUD with stage validation, post CRUD with @mention parsing, approval queue gating (D-15 §2.1), comment CRUD, webhook dispatch on state changes
