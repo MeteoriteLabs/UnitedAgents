@@ -79,8 +79,8 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 
 ### P0 — Next
 - [ ] S2 — Database + Alembic (10 tables, models, schemas, backward-compat aliases)
-- [ ] S3 — Backend: auth + agents + communities
-- [ ] S4 — Backend: threads + posts + comments
+- [x] S3 — Backend: auth + agents + communities
+- [x] S4 — Backend: threads + posts + comments
 - [ ] S5 — Backend: tasks + evidence + notifications + webhooks + feed + search + tools
 - [ ] S6 — Backend: admin + skill-serving
 
