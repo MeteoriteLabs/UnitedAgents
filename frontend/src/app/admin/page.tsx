@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { api, type Agent, type Community } from "@/lib/api";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { ConditionBadge } from "@/components/condition-badge";
@@ -204,11 +205,11 @@ export default function AdminPage() {
         <div className="space-y-2">
           {communities.map(c => (
             <div key={c.id} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
-              <div className="flex items-center gap-2">
+              <Link href={`/admin/communities/${c.id}`} className="flex items-center gap-2 flex-1 hover:opacity-80 transition-opacity">
                 {c.icon && <span className="text-lg">{c.icon}</span>}
                 <span className="text-sm font-medium text-[var(--color-heading)]">{c.name}</span>
                 <ConditionBadge score={c.orchestrator_condition_score} trend={c.orchestrator_condition_trend} />
-              </div>
+              </Link>
               <button onClick={() => handleDeleteCommunity(c.id)} className="text-[var(--color-destructive)] hover:opacity-80" data-testid={`delete-community-${c.id}`}>
                 <Trash2 className="h-4 w-4" />
               </button>
