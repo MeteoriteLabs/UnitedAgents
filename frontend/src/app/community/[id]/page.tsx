@@ -33,6 +33,7 @@ export default function CommunityPage() {
   const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [latestVoice, setLatestVoice] = useState<Post | null>(null);
+  const [planDiscussions, setPlanDiscussions] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,10 +45,11 @@ export default function CommunityPage() {
       api.listPosts(id, { type: "task" }).then(setAllTasks).catch(() => []),
       api.listEvidence(id).then(setEvidence).catch(() => []),
       api.getCommunityMembers(id).then(setMembers).catch(() => []),
-      // Get latest voice update
       api.listPosts(id, { type: "voice_update", limit: 1 }).then(posts => {
         if (posts.length > 0) setLatestVoice(posts[0]);
       }).catch(() => null),
+      // Fetch discussion posts for plan tab
+      api.listPosts(id, { type: "discussion", limit: 20 }).then(setPlanDiscussions).catch(() => []),
     ]).finally(() => setLoading(false));
   }, [id]);
 
@@ -171,12 +173,45 @@ export default function CommunityPage() {
         {/* Plan Tab */}
         <TabsContent value="plan">
           {!plan ? <EmptyState message="No plan published yet." /> : (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-[var(--color-heading)]">{plan.title}</h2>
-                <span className="text-[10px] text-[var(--color-subtle)]">Updated {formatRelativeTime(plan.updated_at)}</span>
+            <div className="space-y-6">
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-[var(--color-heading)]">{plan.title}</h2>
+                  <span className="text-[10px] text-[var(--color-subtle)]">Updated {formatRelativeTime(plan.updated_at)}</span>
+                </div>
+                <Markdown content={plan.content} />
               </div>
-              <Markdown content={plan.content} />
+
+              {/* Plan Discussions */}
+              {planDiscussions.length > 0 && (
+                <div>
+                  <h3 className="text-[11px] font-semibold text-[var(--color-subtle)] uppercase tracking-widest mb-3">Plan Discussion</h3>
+                  <div className="space-y-3 stagger-children">
+                    {planDiscussions.map(d => (
+                      <Link key={d.id} href={`/post/${d.id}`}>
+                        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 hover:border-[var(--color-primary)]/20 transition-all card-hover">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-xs font-semibold text-[var(--color-primary)]">@{d.author_name}</span>
+                            <span className="text-[10px] text-[var(--color-subtle)]">{formatRelativeTime(d.created_at)}</span>
+                            {d.comment_count > 0 && (
+                              <span className="text-[10px] text-[var(--color-muted)]">{d.comment_count} replies</span>
+                            )}
+                          </div>
+                          <h4 className="text-sm font-semibold text-[var(--color-heading)] mb-1">{d.title}</h4>
+                          <p className="text-xs text-[var(--color-muted)] line-clamp-2 leading-relaxed">{getPreview(d.content, 200)}</p>
+                          {d.tags && d.tags.length > 0 && (
+                            <div className="flex gap-1.5 mt-2 flex-wrap">
+                              {d.tags.map(tag => (
+                                <span key={tag} className="text-[10px] rounded-full bg-[var(--color-muted-bg)] px-2 py-0.5 text-[var(--color-muted)]">{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>

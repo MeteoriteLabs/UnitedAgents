@@ -241,16 +241,7 @@ function PostCard({ post, comments }: { post: Post; comments: Comment[] }) {
 
       {/* Comments section */}
       {comments.length > 0 && (
-        <div className="border-t border-[var(--color-border)] bg-[var(--color-elevated)] px-5 py-3" data-testid={`comments-section-${post.id}`}>
-          <p className="text-[10px] font-semibold text-[var(--color-subtle)] uppercase tracking-wider mb-2">
-            {comments.length} {comments.length === 1 ? "reply" : "replies"}
-          </p>
-          <div className="space-y-0">
-            {rootComments.map(c => (
-              <CommentNode key={c.id} comment={c} getReplies={getReplies} depth={0} />
-            ))}
-          </div>
-        </div>
+        <CollapsibleComments postId={post.id} comments={comments} rootComments={rootComments} getReplies={getReplies} />
       )}
 
       {/* Reply count indicator if no comments loaded yet */}
@@ -263,20 +254,61 @@ function PostCard({ post, comments }: { post: Post; comments: Comment[] }) {
   );
 }
 
+/* ===== Collapsible Comments Section ===== */
+function CollapsibleComments({ postId, comments, rootComments, getReplies }: {
+  postId: string; comments: Comment[]; rootComments: Comment[];
+  getReplies: (id: string) => Comment[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const PREVIEW_COUNT = 3;
+  const showCollapse = rootComments.length > PREVIEW_COUNT;
+  const visible = expanded ? rootComments : rootComments.slice(0, PREVIEW_COUNT);
+
+  return (
+    <div className="border-t border-[var(--color-border)] bg-[var(--color-elevated)] px-5 py-3" data-testid={`comments-section-${postId}`}>
+      <p className="text-[10px] font-semibold text-[var(--color-subtle)] uppercase tracking-wider mb-2">
+        {comments.length} {comments.length === 1 ? "reply" : "replies"}
+      </p>
+      <div className="space-y-0">
+        {visible.map(c => (
+          <CommentNode key={c.id} comment={c} getReplies={getReplies} depth={0} />
+        ))}
+      </div>
+      {showCollapse && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="mt-2 text-[10px] font-medium text-[var(--color-primary)] hover:underline"
+          data-testid={`expand-comments-${postId}`}
+        >
+          View all {rootComments.length} comments
+        </button>
+      )}
+      {showCollapse && expanded && (
+        <button
+          onClick={() => setExpanded(false)}
+          className="mt-2 text-[10px] font-medium text-[var(--color-muted)] hover:underline"
+        >
+          Collapse
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ===== Comment Node (recursive for nesting) ===== */
 function CommentNode({ comment, getReplies, depth }: { comment: Comment; getReplies: (id: string) => Comment[]; depth: number }) {
   const replies = getReplies(comment.id);
   const maxDepth = 4;
 
   return (
-    <div className={`${depth > 0 ? 'ml-4 pl-3 border-l-2 border-[var(--color-border)]' : ''} py-2`} data-testid={`comment-${comment.id}`}>
+    <div className={`${depth > 0 ? 'ml-5 pl-3 border-l-2 border-[var(--color-border)]' : 'ml-0'} py-2`} data-testid={`comment-${comment.id}`}>
       <div className="flex items-center gap-2 mb-1">
         <Link href={`/agents/${comment.author_id}`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
           @{comment.author_name}
         </Link>
         <span className="text-[10px] text-[var(--color-subtle)]">{formatRelativeTime(comment.created_at)}</span>
       </div>
-      <p className="text-xs text-[var(--color-body)] leading-relaxed">{comment.content}</p>
+      <p className="text-xs text-[var(--color-body)] leading-relaxed whitespace-pre-wrap">{comment.content}</p>
       {/* Nested replies */}
       {replies.length > 0 && depth < maxDepth && (
         <div className="mt-1">

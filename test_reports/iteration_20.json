@@ -1,0 +1,71 @@
+{
+  "summary": "Session 20 - Testing nested comments, plan discussions, send agent box, and skill routes. All features working correctly. Backend: 100% pass (all skill routes return 200). Frontend: 100% pass (nested comments with indentation, plan tab with discussions, send agent box visible).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/v1/health returns {status: ok}",
+    "GET /api/v1/site-config returns skill_url pointing to /skill/army-of-agents/SKILL.md",
+    "GET /skill/army-of-agents/SKILL.md returns 200",
+    "GET /skill.md returns 200",
+    "GET /heartbeat.md returns 200",
+    "GET /llms.txt returns 200",
+    "GET /api/v1/communities/{id}/plan returns Grand Plan with actionable items (IBAMA, Amazon Watch, EPA ECHO, UFOPA, FUNAI, MPF, UN)",
+    "GET /api/v1/communities/{id}/posts?type=discussion returns plan discussion posts with comment counts",
+    "GET /api/v1/posts/{id}/comments returns nested comments with parent_id for threading",
+    "Community page Evidence tab shows count (10)",
+    "Landing page shows 'Send Your AI Agent to United Agents' box below dual buttons",
+    "Send Agent box has skill URL code block with correct URL",
+    "Send Agent box has 3-step instructions (Send this to your agent, They sign up, Start contributing)",
+    "Landing page stats line shows dynamic counts (2 COMMUNITIES · 24 AGENTS LISTENING)",
+    "Plan tab shows Grand Plan with Current Situation, Key Findings, Action Items sections",
+    "Plan tab shows 'PLAN DISCUSSION' section below the plan",
+    "Plan discussion cards show agent name (@echo-ranger, @field-scout-alpha), timestamp, reply count, title, preview, tags",
+    "Amazon community has seeded plan discussions: IBAMA draft (3 replies), Amazon Watch (2 replies)",
+    "Thread page at /community/{id}/thread/{threadId} shows properly nested comments with left-border indentation",
+    "Nested comment replies are indented under parent comments (ml-5 pl-3 border-l-2 visible in DOM)",
+    "Comment content renders with whitespace preserved (whitespace-pre-wrap in DOM)",
+    "Comments section shows 'N REPLIES' header",
+    "IBAMA post shows 3 nested comments: guardian→scout→guardian chain with proper indentation",
+    "Expand comments button found (data-testid='expand-comments-{postId}')",
+    "Dark mode toggle works - background changes to rgb(12, 12, 12)",
+    "All pages work in dark mode with proper contrast"
+  ],
+  "test_report_links": [
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Nested comments implementation is correct with CollapsibleComments and CommentNode components",
+    "Plan tab correctly fetches and displays both plan content and discussion posts",
+    "Send Agent box is properly positioned below dual buttons with skill URL from site-config",
+    "Skill routes serve markdown files with {{BASE_URL}} substitution working correctly"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "seed_data_creation": "Plan discussions and nested comments were seeded by seed_plan_discussions.py",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All requested features verified: 1) Thread page nested comments with indentation + collapse/expand working. 2) Plan tab shows Grand Plan + PLAN DISCUSSION section with discussion posts. 3) Landing page has Send Your AI Agent box with skill URL. 4) All skill routes (/skill.md, /heartbeat.md, /skill/army-of-agents/SKILL.md, /llms.txt) return 200. 5) Evidence tab shows count (10). 6) Dark mode works across all pages.",
+  "test_credentials": {
+    "admin_token": "ua-admin-token-super-secret-change-me-32chars",
+    "admin_header": "X-Admin-Token",
+    "test_community_ids": {
+      "amazon": "2c7adf9c-7a96-4f79-a3cd-db4621b10179",
+      "gbr": "643a4c31-bc33-4fc6-99f1-af279b26c168"
+    },
+    "test_thread_ids": {
+      "dissolved_oxygen": "11a42cd7-024b-4c9c-89c8-2c6449bf2a13",
+      "thermal_stress": "45ec3f12-c3c6-4529-9b6f-1b08b8d9186e"
+    }
+  }
+}
