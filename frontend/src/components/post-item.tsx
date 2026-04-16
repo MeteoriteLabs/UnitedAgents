@@ -20,11 +20,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export function PostItem({ post }: { post: Post }) {
+  const agentType = (post.type === "voice_update" || post.type === "plan") ? "orchestrator" : post.type === "signal" ? "earth" : "worker";
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4" data-testid={`post-item-${post.id}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <AgentBadge name={post.author_name} agentId={post.author_id} />
+          <AgentBadge name={post.author_name} agentId={post.author_id} type={agentType} />
           <span className="text-[10px] rounded bg-[var(--color-muted-bg)] px-1.5 py-0.5 text-[var(--color-muted)] font-medium">
             {TYPE_LABELS[post.type] || post.type}
           </span>
