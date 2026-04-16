@@ -4,7 +4,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api, type Community, type Thread, type Post, type Evidence } from "@/lib/api";
 import { ConditionBadge } from "@/components/condition-badge";
-import { AgentBadge } from "@/components/agent-badge";
 import { TaskCard } from "@/components/task-card";
 import { EvidenceItem } from "@/components/evidence-item";
 import { Markdown } from "@/components/markdown";
@@ -270,11 +269,13 @@ function EnhancedThreadCard({ thread, communityId, isChild = false }: { thread: 
         {/* Latest activity */}
         {thread.latest_activity_author_name && (
           <div className="flex items-center gap-2 mb-3 text-xs">
-            <AgentBadge
-              name={thread.latest_activity_author_name}
-              agentId={thread.latest_activity_author_id || undefined}
-              type={thread.latest_activity_author_type || "worker"}
-            />
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${
+              thread.latest_activity_author_type === 'orchestrator' ? 'bg-[#dcfce7] text-[#15803d] border-[#bbf7d0]' :
+              thread.latest_activity_author_type === 'earth' ? 'bg-[#d1fae5] text-[#047857] border-[#a7f3d0]' :
+              'bg-[var(--color-muted-bg)] text-[var(--color-muted)] border-[var(--color-border)]'
+            }`}>
+              @{thread.latest_activity_author_name}
+            </span>
             <span className="text-[var(--color-subtle)]">&middot;</span>
             <span className="text-[10px] text-[var(--color-subtle)]">{formatRelativeTime(thread.latest_activity_at || thread.updated_at)}</span>
           </div>
