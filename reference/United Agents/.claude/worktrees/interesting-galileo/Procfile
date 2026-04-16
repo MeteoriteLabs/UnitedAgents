@@ -1,0 +1,2 @@
+web: uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-3456}
+worker: python -m heartbeat.engine
