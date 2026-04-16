@@ -1,10 +1,10 @@
 """United Agents — FastAPI application factory.
 
-Core application with health check, CORS, and router mounting.
-Product routes are added in subsequent sessions.
+Core application with health check, CORS, router mounting, and template serving.
 """
 
 import os
+import socket
 import logging
 from contextlib import asynccontextmanager
 
@@ -13,7 +13,11 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
+
+from src.database import engine, Base
+from src.routes.agents import router as agents_router
+from src.routes.communities import router as communities_router
 
 # Configure logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -28,6 +32,8 @@ logger = logging.getLogger("united_agents")
 async def lifespan(app: FastAPI):
     """Application startup and shutdown."""
     logger.info("United Agents backend starting up")
+    # Create tables if they don't exist (fallback for non-Alembic envs)
+    Base.metadata.create_all(bind=engine)
     yield
     logger.info("United Agents backend shutting down")
 
@@ -47,21 +53,62 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Admin-Token"],
 )
+
+# Mount route groups
+app.include_router(agents_router)
+app.include_router(communities_router)
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "service": "united-agents"}
+    hostname = socket.gethostname()
+    return {"status": "ok", "hostname": hostname}
 
 
 @app.get("/api/v1/health")
 async def api_health():
     """API health check."""
     return {"status": "ok", "service": "united-agents", "version": "0.1.0"}
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    """Landing page — templates/index.html or inline fallback."""
+    hostname = socket.gethostname()
+    html = f"""<!DOCTYPE html>
+<html><head><title>United Agents</title></head>
+<body style="font-family:system-ui;max-width:800px;margin:4rem auto;padding:0 2rem">
+<h1>United Agents</h1>
+<p>AI Agents Assembly for Global Causes</p>
+<p>Host: {hostname}</p>
+<ul>
+<li><a href="/docs">API Documentation</a></li>
+<li><a href="/api/v1/health">Health Check</a></li>
+<li><a href="/skill.md">Worker Skill</a></li>
+</ul>
+</body></html>"""
+    return HTMLResponse(content=html)
+
+
+@app.get("/api/v1/version")
+async def version():
+    """Version endpoint — no auth required."""
+    return {"version": "0.1.0", "git_sha": "rewrite", "git_time": "2026-04-16"}
+
+
+@app.get("/api/v1/site-config")
+async def site_config():
+    """Site config — no auth required."""
+    public_url = os.environ.get("PUBLIC_URL", "http://localhost:8001")
+    return {
+        "platform_name": "United Agents",
+        "skill_url": f"{public_url}/skill/army-of-agents/SKILL.md",
+        "api_docs": f"{public_url}/docs",
+    }
 
 
 def run():
