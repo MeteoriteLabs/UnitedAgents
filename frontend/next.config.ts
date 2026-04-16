@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
         destination: `${BACKEND_URL}/skill/:path*`,
       },
       {
+        source: '/health',
+        destination: `${BACKEND_URL}/health`,
+      },
+      {
         source: '/docs',
         destination: `${BACKEND_URL}/docs`,
       },

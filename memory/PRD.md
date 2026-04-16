@@ -1,0 +1,70 @@
+# United Agents — PRD & Progress Tracker
+
+## Original Problem Statement
+Rebuild the United Agents platform from scratch based on 23 markdown architecture docs. A web platform where AI orchestrator agents speak in the first person as causes (rivers, forests, reefs, labor issues, public-health threats). Each orchestrator runs a scheduled heartbeat: pulls live data, scores situation, posts voice updates, opens investigation threads, assigns tasks. Worker agents claim tasks, research, submit evidence. Earth agent watches cross-cutting patterns. Humans observe everything live.
+
+## Architecture
+- **Backend**: FastAPI (Python 3.11) on port 8001
+- **Frontend**: Next.js 15 (App Router, React 19, TypeScript, Tailwind 4) on port 3000
+- **Database**: PostgreSQL 15
+- **Heartbeat Engine**: APScheduler-based worker process (separate from API)
+- **LLM**: Anthropic Claude + OpenAI via provider abstraction (Emergent LLM key)
+- **External APIs**: USGS, NOAA, GFW, Google Custom Search, admin-configured HTTP
+
+## User Personas
+1. **Mission-driven operators** — journalists, advocacy orgs, researchers, NGO staff (admins)
+2. **AI agent owners/builders** — developers pointing agents at the platform via army-of-agents skill
+3. **General observers** — public reading the live agent conversation
+4. **Subject-matter experts** — domain specialists verifying/contesting evidence
+
+## Core Requirements (Static)
+- 10 database tables (agents, communities, threads, community_members, posts, comments, evidence, notifications, webhooks, platform_config)
+- 51+ API endpoints under /api/v1/
+- 5-stage orchestrator heartbeat cycle
+- 3-phase worker cycle
+- Earth agent cross-community analysis
+- 12 frontend routes
+- Cause-agnostic by construction (admin config, not code deploys)
+- D-15 security fixes applied inline (15 total)
+- Backward-compat aliases preserved (project_id, author_id, body, Project* schemas)
+- PostgreSQL-only (D-11), no SQLite fallback
+
+## What's Been Implemented
+
+### Session 1 — Scaffold & Infra (2026-04-16)
+- PostgreSQL 15 installed and configured (united_agents + united_agents_test databases)
+- Backend: FastAPI app with health check, CORS (D-15 §1.4), lifespan management
+- Frontend: Next.js 15.3.2, React 19, TypeScript, Tailwind 4, shadcn/ui config
+- Palette: warm cream (#faf7f2) + forest green (#15803d) + stone/neutral — verbatim from CONFIG_FILES.md
+- Docker: docker-compose.yml, Dockerfiles for backend + frontend
+- Alembic initialized with env.py reading DATABASE_URL
+- CI skeleton: .github/workflows/ci.yml
+- Procfile, run.py, .env.example, .gitignore, README.md
+- Empty package markers for src/, heartbeat/, tests/, scripts/
+- Execution-phase decisions ED-1 through ED-5 logged
+
+## Prioritized Backlog (14-Session Roadmap)
+### Completed
+- [x] S1 — Scaffold & infra
+
+### P0 — Next
+- [ ] S2 — Database + Alembic (10 tables, models, schemas, backward-compat aliases)
+- [ ] S3 — Backend: auth + agents + communities
+- [ ] S4 — Backend: threads + posts + comments
+- [ ] S5 — Backend: tasks + evidence + notifications + webhooks + feed + search + tools
+- [ ] S6 — Backend: admin + skill-serving
+
+### P1 — After Backend API
+- [ ] S7 — Heartbeat: engine + LLM provider + tool loop
+- [ ] S8 — Heartbeat: tools + data sources
+- [ ] S9 — Heartbeat: orchestrator + worker + earth + maintenance jobs
+- [ ] S10 — Frontend foundation (layout, palette, api client, components)
+- [ ] S11 — Frontend public pages
+- [ ] S12 — Frontend auth-gated pages
+
+### P2 — Polish
+- [ ] S13 — Seed scripts + scripts folder reorg
+- [ ] S14 — Verification + end-to-end walkthrough
+
+## Next Tasks
+- Session 2: SQLAlchemy models for all 10 tables, initial Alembic migration, Pydantic schemas with backward-compat aliases, pytest fixture against PostgreSQL
