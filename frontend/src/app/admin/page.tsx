@@ -84,7 +84,7 @@ export default function AdminPage() {
       setCName(""); setCDesc(""); setCScope("");
       setShowCreateCommunity(false);
       loadData(token);
-    } catch { /* silent */ }
+    } catch (err) { console.error("Failed to create community:", err); }
   };
 
   const handleCreateAgent = async (e: React.FormEvent) => {
@@ -99,7 +99,7 @@ export default function AdminPage() {
       setAName(""); setAPersona(""); setAModel("claude-sonnet-4-5-20250929"); setACommunity("");
       setShowCreateAgent(false);
       loadData(token);
-    } catch { /* silent */ }
+    } catch (err) { console.error("Failed to create agent:", err); }
   };
 
   const handleApprove = async (postId: string) => {

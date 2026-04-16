@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { api, type Post, type Community } from "@/lib/api";
 import { PostItem } from "@/components/post-item";
 import { VoiceUpdate } from "@/components/voice-update";
@@ -28,12 +28,14 @@ export default function FeedPage() {
         offset,
       });
       setPosts(data);
-    } catch { /* silent */ }
+    } catch (err) {
+      console.error("Failed to fetch feed:", err);
+    }
     setLoading(false);
   }, [typeFilter, communityFilter, offset]);
 
   useEffect(() => {
-    api.listCommunities().then(setCommunities).catch(() => {});
+    api.listCommunities().then(setCommunities).catch(err => console.error("Failed to load communities:", err));
   }, []);
 
   useEffect(() => {
@@ -48,6 +50,9 @@ export default function FeedPage() {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_BACKEND_URL || '';
     const wsUrl = apiBase.replace(/^http/, 'ws') + '/api/v1/ws/feed';
 
+    let reconnectTimer: ReturnType<typeof setTimeout>;
+    let pingInterval: ReturnType<typeof setInterval>;
+
     function connect() {
       try {
         const ws = new WebSocket(wsUrl);
@@ -55,13 +60,9 @@ export default function FeedPage() {
 
         ws.onopen = () => {
           setWsConnected(true);
-          // Keep alive ping every 30s
-          const pingInterval = setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send('ping');
-            }
+          pingInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) ws.send('ping');
           }, 30000);
-          ws.addEventListener('close', () => clearInterval(pingInterval));
         };
 
         ws.onmessage = (event) => {
@@ -70,28 +71,29 @@ export default function FeedPage() {
             if (data.type === 'new_post' && data.post) {
               setNewPosts(prev => [data.post, ...prev]);
             }
-          } catch { /* ignore non-JSON */ }
+          } catch {
+            // Non-JSON pong response — expected
+          }
         };
 
         ws.onclose = () => {
           setWsConnected(false);
-          // Reconnect after 5s
-          setTimeout(connect, 5000);
+          clearInterval(pingInterval);
+          reconnectTimer = setTimeout(connect, 5000);
         };
 
-        ws.onerror = () => {
-          ws.close();
-        };
-      } catch {
-        setTimeout(connect, 5000);
+        ws.onerror = () => ws.close();
+      } catch (err) {
+        console.error("WebSocket connection error:", err);
+        reconnectTimer = setTimeout(connect, 5000);
       }
     }
 
     connect();
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      clearTimeout(reconnectTimer);
+      clearInterval(pingInterval);
+      if (wsRef.current) wsRef.current.close();
     };
   }, []);
 
@@ -100,7 +102,7 @@ export default function FeedPage() {
     setNewPosts([]);
   }
 
-  const types = ["", "voice_update", "task", "discussion", "research_note", "signal", "evidence_submission"];
+  const types = useMemo(() => ["", "voice_update", "task", "discussion", "research_note", "signal", "evidence_submission"], []);
 
   return (
     <div className="mx-auto max-w-6xl px-4 md:px-6 py-8 animate-fade-in" data-testid="feed-page">

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api, type Community, type Thread, type Post, type Evidence } from "@/lib/api";
@@ -39,16 +39,15 @@ export default function CommunityPage() {
   useEffect(() => {
     if (!id) return;
     Promise.all([
-      api.getCommunity(id).then(setCommunity).catch(() => null),
-      api.listThreads(id).then(setThreads).catch(() => []),
+      api.getCommunity(id).then(setCommunity).catch(err => { console.error("Community load failed:", err); return null; }),
+      api.listThreads(id).then(setThreads).catch(err => { console.error("Threads load failed:", err); return []; }),
       api.getCommunityPlan(id).then(setPlan).catch(() => null),
-      api.listPosts(id, { type: "task" }).then(setAllTasks).catch(() => []),
-      api.listEvidence(id).then(setEvidence).catch(() => []),
-      api.getCommunityMembers(id).then(setMembers).catch(() => []),
+      api.listPosts(id, { type: "task" }).then(setAllTasks).catch(err => { console.error("Tasks load failed:", err); return []; }),
+      api.listEvidence(id).then(setEvidence).catch(err => { console.error("Evidence load failed:", err); return []; }),
+      api.getCommunityMembers(id).then(setMembers).catch(err => { console.error("Members load failed:", err); return []; }),
       api.listPosts(id, { type: "voice_update", limit: 1 }).then(posts => {
         if (posts.length > 0) setLatestVoice(posts[0]);
       }).catch(() => null),
-      // Fetch discussion posts for plan tab
       api.listPosts(id, { type: "discussion", limit: 20 }).then(setPlanDiscussions).catch(() => []),
     ]).finally(() => setLoading(false));
   }, [id]);
@@ -57,9 +56,12 @@ export default function CommunityPage() {
   if (!community) return <EmptyState message="Community not found." />;
 
   const parentThreads = threads.filter(t => !t.parent_thread_id);
-  const openTasks = allTasks.filter(p => p.task_status === "open" || p.task_status === "claimed");
-  const resolvedTasks = allTasks.filter(p => p.task_status === "resolved");
-  const onlineMembers = members.filter(m => m.online);
+  const openTasks = useMemo(() => allTasks.filter(p => p.task_status === "open" || p.task_status === "claimed"), [allTasks]);
+  const resolvedTasks = useMemo(() => allTasks.filter(p => p.task_status === "resolved"), [allTasks]);
+  const onlineMembers = useMemo(() => members.filter(m => m.online), [members]);
+  const verifiedEvidence = useMemo(() => evidence.filter(e => e.verified), [evidence]);
+  const unverifedEvidence = useMemo(() => evidence.filter(e => !e.verified && !e.contested), [evidence]);
+  const contestedEvidence = useMemo(() => evidence.filter(e => e.contested), [evidence]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 md:px-6 py-8 animate-fade-in" data-testid="community-page">
@@ -237,22 +239,22 @@ export default function CommunityPage() {
         {/* Evidence Tab */}
         <TabsContent value="evidence">
           <div className="space-y-6">
-            {evidence.filter(e => e.verified).length > 0 && (
+            {verifiedEvidence.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-[#15803d] mb-3">Verified ({evidence.filter(e => e.verified).length})</h3>
-                <div className="space-y-3">{evidence.filter(e => e.verified).map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
+                <h3 className="text-sm font-semibold text-[#15803d] mb-3">Verified ({verifiedEvidence.length})</h3>
+                <div className="space-y-3">{verifiedEvidence.map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
               </div>
             )}
-            {evidence.filter(e => !e.verified && !e.contested).length > 0 && (
+            {unverifedEvidence.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-[var(--color-heading)] mb-3">Unverified ({evidence.filter(e => !e.verified && !e.contested).length})</h3>
-                <div className="space-y-3">{evidence.filter(e => !e.verified && !e.contested).map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
+                <h3 className="text-sm font-semibold text-[var(--color-heading)] mb-3">Unverified ({unverifedEvidence.length})</h3>
+                <div className="space-y-3">{unverifedEvidence.map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
               </div>
             )}
-            {evidence.filter(e => e.contested).length > 0 && (
+            {contestedEvidence.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-[#c2410c] mb-3">Contested ({evidence.filter(e => e.contested).length})</h3>
-                <div className="space-y-3">{evidence.filter(e => e.contested).map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
+                <h3 className="text-sm font-semibold text-[#c2410c] mb-3">Contested ({contestedEvidence.length})</h3>
+                <div className="space-y-3">{contestedEvidence.map(e => <EvidenceItem key={e.id} evidence={e} />)}</div>
               </div>
             )}
             {evidence.length === 0 && <EmptyState message="No evidence gathered yet." />}

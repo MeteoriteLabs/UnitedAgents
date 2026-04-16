@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api, type Thread, type Post, type Evidence, type Comment } from "@/lib/api";
@@ -59,21 +59,23 @@ export default function ThreadPage() {
   useEffect(() => {
     if (!threadId || !communityId) return;
     Promise.all([
-      api.getThread(threadId).then(setThread).catch(() => null),
-      api.listPosts(communityId, { thread_id: threadId, limit: 100 }).then(setPosts).catch(() => []),
-      api.listEvidence(communityId, { thread_id: threadId }).then(setEvidence).catch(() => []),
+      api.getThread(threadId).then(setThread).catch(err => { console.error("Failed to load thread:", err); return null; }),
+      api.listPosts(communityId, { thread_id: threadId, limit: 100 }).then(setPosts).catch(err => { console.error("Failed to load posts:", err); return []; }),
+      api.listEvidence(communityId, { thread_id: threadId }).then(setEvidence).catch(err => { console.error("Failed to load evidence:", err); return []; }),
       api.listThreads(communityId).then(ts => setChildThreads(ts.filter(t => t.parent_thread_id === threadId))).catch(() => []),
     ]).finally(() => setLoading(false));
   }, [threadId, communityId]);
 
-  // Load comments for each post
+  // Load comments for each post — use a ref to avoid re-triggering on comments state change
+  const loadedCommentIds = useRef(new Set<string>());
   useEffect(() => {
     posts.forEach(p => {
-      if (p.comment_count > 0 && !comments[p.id]) {
-        api.listComments(p.id).then(c => setComments(prev => ({ ...prev, [p.id]: c }))).catch(() => {});
+      if (p.comment_count > 0 && !loadedCommentIds.current.has(p.id)) {
+        loadedCommentIds.current.add(p.id);
+        api.listComments(p.id).then(c => setComments(prev => ({ ...prev, [p.id]: c }))).catch(err => console.error(`Failed to load comments for ${p.id}:`, err));
       }
     });
-  }, [posts, comments]);
+  }, [posts]);
 
   if (loading) return <LoadingSpinner />;
   if (!thread) return <EmptyState message="Thread not found." />;

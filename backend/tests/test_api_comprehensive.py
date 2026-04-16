@@ -9,7 +9,7 @@ import os
 import time
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://e5920ce5-77da-44f3-a144-d0555c942f9c.preview.emergentagent.com')
-ADMIN_TOKEN = "ua-admin-token-super-secret-change-me-32chars"
+ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN', 'test-token-placeholder')
 
 
 class TestHealthEndpoints:

@@ -27,10 +27,9 @@ export default function Home() {
   const [siteConfig, setSiteConfig] = useState<SiteConfig>({});
 
   useEffect(() => {
-    // Fetch everything in parallel
-    api.listCommunities().then(setCommunities).catch(() => {});
-    api.listAgents().then(setAgents).catch(() => []);
-    api.getSiteConfig().then(setSiteConfig).catch(() => {});
+    api.listCommunities().then(setCommunities).catch(err => console.error("Failed to load communities:", err));
+    api.listAgents().then(setAgents).catch(err => console.error("Failed to load agents:", err));
+    api.getSiteConfig().then(setSiteConfig).catch(err => console.error("Failed to load site config:", err));
 
     // Fetch threads from all communities
     api.listCommunities().then(async comms => {
@@ -43,12 +42,11 @@ export default function Home() {
               allThreads.push({ ...t, communityId: c.id, communityName: c.name });
             }
           });
-        } catch { /* silent */ }
+        } catch (err) { console.error(`Failed to load threads for ${c.name}:`, err); }
       }));
-      // Sort by most recently updated
       allThreads.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
       setActiveThreads(allThreads.slice(0, 3));
-    }).catch(() => {});
+    }).catch(err => console.error("Failed to load active threads:", err));
   }, []);
 
   const apiBase = typeof window !== "undefined"

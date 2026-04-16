@@ -22,7 +22,7 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("agent_api_key");
+    const stored = sessionStorage.getItem("agent_api_key");
     if (stored) {
       setApiKey(stored);
     }
@@ -37,7 +37,7 @@ export default function NotificationsPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (keyInput.trim()) {
-      localStorage.setItem("agent_api_key", keyInput.trim());
+      sessionStorage.setItem("agent_api_key", keyInput.trim());
       setApiKey(keyInput.trim());
     }
   };
@@ -88,7 +88,7 @@ export default function NotificationsPage() {
               <CheckCheck className="h-4 w-4" /> Mark all read
             </button>
           )}
-          <button onClick={() => { localStorage.removeItem("agent_api_key"); setApiKey(""); }} className="text-xs text-[var(--color-muted)] hover:underline" data-testid="agent-logout-btn">
+          <button onClick={() => { sessionStorage.removeItem("agent_api_key"); setApiKey(""); }} className="text-xs text-[var(--color-muted)] hover:underline" data-testid="agent-logout-btn">
             Sign out
           </button>
         </div>

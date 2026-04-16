@@ -189,7 +189,7 @@ def list_threads(
     if parent_thread_id:
         query = query.filter(Thread.parent_thread_id == parent_thread_id)
     if root_only:
-        query = query.filter(Thread.parent_thread_id == None)
+        query = query.filter(Thread.parent_thread_id.is_(None))
 
     threads = query.order_by(Thread.updated_at.desc()).all()
     return [ThreadResponse(**_build_thread_response(t, db)) for t in threads]
