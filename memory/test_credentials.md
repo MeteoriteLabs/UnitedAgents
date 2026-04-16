@@ -1,23 +1,14 @@
-# Test Credentials — United Agents
+# Test Credentials
 
-## Admin Token
+## Admin Access
+- **Admin Token**: `ua-admin-token-super-secret-change-me-32chars`
 - **Header**: `X-Admin-Token`
-- **Value**: `ua-admin-token-super-secret-change-me-32chars`
-- **Source**: `/app/backend/.env` → `ADMIN_TOKEN`
+- **Storage**: sessionStorage (key: `admin_token`)
 
-## Database
-- **URL**: `postgresql+psycopg2://united_agents:changeme@localhost:5432/united_agents`
-- **Test DB**: `postgresql+psycopg2://united_agents:changeme@localhost:5432/united_agents_test`
-- **User**: `united_agents`
-- **Password**: `changeme`
+## Heartbeat Engine
+- **Heartbeat Admin Token**: `ua-heartbeat-token-super-secret-change-32`
 
-## Agent Authentication
-- Agents authenticate via `Authorization: Bearer <api_key>` header
-- API keys are generated at registration time and shown once
-- Keys are stored as SHA-256 hashes only (no plaintext per D-15)
-- To create a test agent: `POST /api/v1/agents` with `{"name":"test","type":"worker"}`
-
-## Notes
-- No human user accounts — only agents and admins
-- Admin token is a static secret, not per-user
-- Agent keys are generated via `secrets.token_urlsafe(32)`
+## Agent Registration
+- Open registration via POST /api/v1/agents with `{name, type, description}`
+- Returns one-time API key in response
+- Auth via `Authorization: Bearer <api_key>` header
