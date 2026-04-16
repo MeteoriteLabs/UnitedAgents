@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-United Agents Session 7 Backend Testing
-Tests: LLM provider detection, tool normalization, tool loop, API client, engine boot
+United Agents Session 8 Backend Testing
+Tests: Duplicate task detection, tool definitions, condition scorer, data sources, all 50 pytest tests
 """
 
 import asyncio
@@ -11,18 +11,12 @@ import time
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
 import os
 
 # Add backend to path
 sys.path.insert(0, '/app/backend')
 
-from heartbeat.llm.provider import LLMProvider, LLMResponse, ToolCall
-from heartbeat.llm.tool_loop import tool_loop
-from heartbeat.api_client import APIClient
-from heartbeat.engine import start_engine
-
-class Session7BackendTester:
+class Session8BackendTester:
     def __init__(self):
         self.tests_run = 0
         self.tests_passed = 0
@@ -73,99 +67,209 @@ class Session7BackendTester:
             self.test_results.append({"name": name, "status": "ERROR", "error": str(e)})
             return False
 
-    def test_llm_provider_detection(self):
-        """Test LLM provider detection logic"""
-        # Test Anthropic detection
-        assert LLMProvider.detect_provider("claude-sonnet-4") == "anthropic"
-        assert LLMProvider.detect_provider("claude-3-haiku") == "anthropic"
-        assert LLMProvider.detect_provider("claude-opus") == "anthropic"
+    def test_duplicate_task_detection(self):
+        """Test duplicate task detection with STOP_WORDS and overlap >0.45"""
+        from heartbeat.tools.platform_tools import _find_duplicate_task, STOP_WORDS
         
-        # Test OpenAI detection
-        assert LLMProvider.detect_provider("gpt-4o") == "openai"
-        assert LLMProvider.detect_provider("gpt-4o-mini") == "openai"
-        assert LLMProvider.detect_provider("o1-preview") == "openai"
-        assert LLMProvider.detect_provider("o3-mini") == "openai"
-        assert LLMProvider.detect_provider("o4-turbo") == "openai"
+        # Test exact match blocked
+        tasks = [{"title": "Collect water samples from station 5"}]
+        dup = _find_duplicate_task("Collect water samples from station 5", tasks)
+        assert dup is not None, "Exact match should be blocked"
         
-        # Test unknown model raises ValueError
+        # Test similar title (overlap >0.45) blocked
+        tasks = [{"title": "Research upstream discharge patterns"}]
+        dup = _find_duplicate_task("Research upstream discharge trends", tasks)
+        # "research", "upstream", "discharge" overlap = 3/4 = 0.75 > 0.45
+        assert dup is not None, "Similar title should be blocked"
+        
+        # Test dissimilar title passes
+        tasks = [{"title": "Monitor coral bleaching events"}]
+        dup = _find_duplicate_task("Analyze deforestation satellite imagery", tasks)
+        assert dup is None, "Dissimilar title should pass"
+        
+        # Test STOP_WORDS filtered before comparison
+        tasks = [{"title": "the water is in the river"}]
+        dup = _find_duplicate_task("the river is from the water", tasks)
+        # After stop word removal: {"water", "river"} overlap = 2/2 = 1.0 > 0.45
+        assert dup is not None, "STOP_WORDS should be filtered"
+        
+        # Test STOP_WORDS are frozenset
+        assert isinstance(STOP_WORDS, frozenset), "STOP_WORDS should be frozenset"
+        assert "the" in STOP_WORDS, "STOP_WORDS should contain common words"
+        
+        return True
+
+    def test_tool_definitions_session8(self):
+        """Test tool definitions: orchestrator gets 9 tools, earth gets 11 tools"""
+        from heartbeat.tools.platform_tools import (
+            ORCHESTRATOR_TOOLS, EARTH_TOOLS, SEARCH_WEB_TOOL, get_tool_definitions
+        )
+        
+        # Test orchestrator has 8 tools
+        assert len(ORCHESTRATOR_TOOLS) == 8, f"Expected 8 orchestrator tools, got {len(ORCHESTRATOR_TOOLS)}"
+        
+        # Test earth has 2 extra tools
+        assert len(EARTH_TOOLS) == 2, f"Expected 2 earth tools, got {len(EARTH_TOOLS)}"
+        
+        # Test orchestrator gets 8+search=9 tools
+        orch_tools = get_tool_definitions("orchestrator")
+        assert len(orch_tools) == 9, f"Expected 9 total orchestrator tools, got {len(orch_tools)}"
+        
+        # Test earth gets 8+search+2=11 tools
+        earth_tools = get_tool_definitions("earth")
+        assert len(earth_tools) == 11, f"Expected 11 total earth tools, got {len(earth_tools)}"
+        
+        # Verify search_web is included
+        orch_names = [t["name"] for t in orch_tools]
+        earth_names = [t["name"] for t in earth_tools]
+        assert "search_web" in orch_names, "Orchestrator should have search_web"
+        assert "search_web" in earth_names, "Earth should have search_web"
+        
+        # Verify earth-only tools
+        assert "post_signal" in earth_names, "Earth should have post_signal"
+        assert "create_cross_community_task" in earth_names, "Earth should have create_cross_community_task"
+        assert "post_signal" not in orch_names, "Orchestrator should not have post_signal"
+        
+        return True
+
+    def test_tool_handlers_session8(self):
+        """Test tool handlers: post_voice_update, create_task, update_community_plan"""
+        from heartbeat.tools.platform_tools import build_tool_handlers
+        from unittest.mock import MagicMock, AsyncMock
+        
+        # Mock API client
+        client = MagicMock()
+        agent = {"id": "a1", "api_key": "test-key"}
+        handlers = build_tool_handlers(client, agent, "c1")
+        
+        # Verify all expected handlers exist
+        expected_handlers = {
+            "post_voice_update", "create_thread", "update_thread_stage",
+            "create_task", "reply_to_post", "promote_to_evidence",
+            "update_community_plan", "post_system_message", "search_web",
+            "post_signal", "create_cross_community_task",
+        }
+        assert set(handlers.keys()) == expected_handlers, "All handlers should be present"
+        
+        return True
+
+    def test_condition_scorer_session8(self):
+        """Test condition scorer: perfect match, directions, critical threshold, trends"""
+        from heartbeat.sources.scorer import calculate
+        
+        # Test perfect match → 100.0, stable
+        current = {"temp": 25.0, "do": 8.0}
+        baseline = {
+            "temp": {"value": 25.0, "weight": 1.0, "direction": "deviation_bad"},
+            "do": {"value": 8.0, "weight": 1.0, "direction": "deviation_bad"},
+        }
+        score, trend = calculate(current, baseline)
+        assert score == 100.0, f"Perfect match should score 100.0, got {score}"
+        assert trend == "stable", f"Perfect match should be stable, got {trend}"
+        
+        # Test deviation_bad direction
+        current = {"temp": 30.0}
+        baseline = {"temp": {"value": 25.0, "weight": 1.0, "direction": "deviation_bad"}}
+        score, trend = calculate(current, baseline)
+        assert score == 80.0, f"Deviation should score 80.0, got {score}"
+        
+        # Test high_bad direction
+        current = {"temp": 30.0}
+        baseline = {"temp": {"value": 25.0, "weight": 1.0, "direction": "high_bad"}}
+        score, trend = calculate(current, baseline)
+        assert score == 80.0, f"High_bad should score 80.0, got {score}"
+        
+        # Test low_bad direction
+        current = {"do": 4.0}
+        baseline = {"do": {"value": 8.0, "weight": 1.0, "direction": "low_bad"}}
+        score, trend = calculate(current, baseline)
+        assert score == 50.0, f"Low_bad should score 50.0, got {score}"
+        
+        # Test critical threshold (score ≤10)
+        current = {"do": 0.5}
+        baseline = {"do": {"value": 8.0, "weight": 1.0, "direction": "low_bad"}}
+        score, trend = calculate(current, baseline)
+        assert score <= 10, f"Critical score should be ≤10, got {score}"
+        assert trend == "critical", f"Low score should be critical, got {trend}"
+        
+        # Test trend classification with previous_score
+        current = {"temp": 25.0}
+        baseline = {"temp": {"value": 25.0, "weight": 1.0, "direction": "deviation_bad"}}
+        score, trend = calculate(current, baseline, previous_score=90.0)
+        assert trend == "improving", f"Score increase should be improving, got {trend}"
+        
+        # Test weighted composite scoring
+        current = {"temp": 25.0, "do": 4.0}
+        baseline = {
+            "temp": {"value": 25.0, "weight": 0.3, "direction": "deviation_bad"},
+            "do": {"value": 8.0, "weight": 0.7, "direction": "low_bad"},
+        }
+        score, trend = calculate(current, baseline)
+        assert score == 65.0, f"Weighted composite should be 65.0, got {score}"
+        
+        return True
+
+    def test_generic_http_session8(self):
+        """Test GenericHTTP: dot-notation path traversal, error handling"""
+        from heartbeat.sources.generic_http import _traverse_path
+        
+        # Test dot-notation path traversal ($.a.b)
+        data = {"a": {"b": 42}}
+        result = _traverse_path(data, "$.a.b")
+        assert result == 42, f"Expected 42, got {result}"
+        
+        # Test array index
+        data = {"items": [{"name": "first"}, {"name": "second"}]}
+        result = _traverse_path(data, "$.items.1.name")
+        assert result == "second", f"Expected 'second', got {result}"
+        
+        # Test root path
+        data = {"x": 1}
+        result = _traverse_path(data, "$")
+        assert result == data, f"Root path should return full data"
+        
+        # Test missing key returns None
+        data = {"a": 1}
+        result = _traverse_path(data, "$.b.c")
+        assert result is None, f"Missing key should return None, got {result}"
+        
+        return True
+
+    def test_existing_pytest_tests_session8(self):
+        """Verify that all 50 existing pytest tests pass"""
+        import subprocess
+        
         try:
-            LLMProvider.detect_provider("llama-3")
-            return False  # Should have raised ValueError
-        except ValueError as e:
-            assert "Unknown model prefix" in str(e)
-        
-        return True
-
-    def test_tool_def_normalization(self):
-        """Test tool definition normalization for both providers"""
-        provider = LLMProvider()
-        
-        # Test unified tool definition
-        tools = [{
-            "name": "search_web",
-            "description": "Search the web for information",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query"},
-                    "count": {"type": "integer", "default": 5}
-                },
-                "required": ["query"]
-            }
-        }]
-        
-        # Test Anthropic normalization
-        anthropic_tools = provider._normalize_tools_anthropic(tools)
-        assert len(anthropic_tools) == 1
-        assert anthropic_tools[0]["name"] == "search_web"
-        assert "input_schema" in anthropic_tools[0]
-        assert anthropic_tools[0]["input_schema"]["type"] == "object"
-        
-        # Test OpenAI normalization
-        openai_tools = provider._normalize_tools_openai(tools)
-        assert len(openai_tools) == 1
-        assert openai_tools[0]["type"] == "function"
-        assert openai_tools[0]["function"]["name"] == "search_web"
-        assert openai_tools[0]["function"]["parameters"]["type"] == "object"
-        
-        return True
-
-    def test_tool_result_normalization(self):
-        """Test tool result message normalization"""
-        provider = LLMProvider()
-        
-        # Test Anthropic tool result normalization
-        resp = LLMResponse(
-            text="I'll search for that information.",
-            tool_calls=[ToolCall(id="tc_123", name="search_web", arguments={"query": "test"})],
-            raw_content=[MagicMock(type="tool_use", id="tc_123", name="search_web", input={"query": "test"})],
-            _provider="anthropic"
-        )
-        results = ['{"results": ["Found test information"]}']
-        
-        anthropic_msgs = provider.build_tool_result_messages("anthropic", resp, results)
-        assert len(anthropic_msgs) == 2
-        assert anthropic_msgs[0]["role"] == "assistant"
-        assert anthropic_msgs[1]["role"] == "user"
-        assert anthropic_msgs[1]["content"][0]["type"] == "tool_result"
-        assert anthropic_msgs[1]["content"][0]["tool_use_id"] == "tc_123"
-        
-        # Test OpenAI tool result normalization
-        resp_openai = LLMResponse(
-            text="I'll search for that information.",
-            tool_calls=[ToolCall(id="call_456", name="search_web", arguments={"query": "test"})],
-            raw_content=MagicMock(),
-            _provider="openai"
-        )
-        
-        openai_msgs = provider.build_tool_result_messages("openai", resp_openai, results)
-        assert len(openai_msgs) == 2
-        assert openai_msgs[0]["role"] == "assistant"
-        assert openai_msgs[0]["tool_calls"][0]["id"] == "call_456"
-        assert openai_msgs[1]["role"] == "tool"
-        assert openai_msgs[1]["tool_call_id"] == "call_456"
-        
-        return True
+            # Run the existing tests
+            result = subprocess.run([
+                'python', '-m', 'pytest', 
+                '/app/backend/heartbeat/tests/', 
+                '-v', '--tb=short'
+            ], 
+            cwd='/app/backend',
+            env={**os.environ, 'DATABASE_URL': 'postgresql+psycopg2://united_agents:changeme@localhost:5432/united_agents_test'},
+            capture_output=True, 
+            text=True, 
+            timeout=60
+            )
+            
+            if result.returncode == 0:
+                # Count passed tests from output
+                output_lines = result.stdout.split('\n')
+                passed_count = 0
+                for line in output_lines:
+                    if 'PASSED' in line:
+                        passed_count += 1
+                
+                self.log(f"   Existing pytest tests: {passed_count} passed")
+                return passed_count == 50  # Expect exactly 50 tests
+            else:
+                self.log(f"   Pytest failed: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            self.log(f"   Error running pytest: {str(e)}")
+            return False
 
     async def test_tool_loop_no_tool_calls(self):
         """Test tool loop exits with 'finished' when no tool calls"""
@@ -457,38 +561,30 @@ class Session7BackendTester:
             return False
 
     async def run_all_tests(self):
-        """Run all Session 7 tests"""
-        self.log("🚀 Starting United Agents Session 7 Backend Tests")
+        """Run all Session 8 tests"""
+        self.log("🚀 Starting United Agents Session 8 Backend Tests")
         
-        # Synchronous tests
-        self.run_test("LLM Provider Detection", self.test_llm_provider_detection)
-        self.run_test("Tool Definition Normalization", self.test_tool_def_normalization)
-        self.run_test("Tool Result Normalization", self.test_tool_result_normalization)
-        self.run_test("Existing Pytest Tests Pass", self.test_existing_pytest_tests)
-        
-        # Asynchronous tests
-        await self.run_async_test("Tool Loop - No Tool Calls", self.test_tool_loop_no_tool_calls)
-        await self.run_async_test("Tool Loop - Unknown Tool", self.test_tool_loop_unknown_tool)
-        await self.run_async_test("Tool Loop - Max Iterations", self.test_tool_loop_max_iterations)
-        await self.run_async_test("Tool Loop - Handler Exception", self.test_tool_loop_handler_exception)
-        await self.run_async_test("API Client - Exponential Backoff", self.test_api_client_exponential_backoff)
-        await self.run_async_test("API Client - No Retry 4xx", self.test_api_client_no_retry_4xx)
-        await self.run_async_test("Engine - Admin Token Validation", self.test_engine_admin_token_validation)
-        await self.run_async_test("Engine - Job Scheduling", self.test_engine_job_scheduling)
+        # Session 8 specific tests
+        self.run_test("Duplicate Task Detection", self.test_duplicate_task_detection)
+        self.run_test("Tool Definitions (Session 8)", self.test_tool_definitions_session8)
+        self.run_test("Tool Handlers (Session 8)", self.test_tool_handlers_session8)
+        self.run_test("Condition Scorer (Session 8)", self.test_condition_scorer_session8)
+        self.run_test("GenericHTTP Data Source (Session 8)", self.test_generic_http_session8)
+        self.run_test("All 50 Pytest Tests Pass", self.test_existing_pytest_tests_session8)
         
         # Print results
         success_rate = (self.tests_passed / self.tests_run * 100) if self.tests_run > 0 else 0
         self.log(f"\n📊 Test Results: {self.tests_passed}/{self.tests_run} passed ({success_rate:.1f}%)")
         
-        if success_rate >= 80:
-            self.log("✅ Session 7 backend tests mostly successful")
+        if success_rate >= 90:
+            self.log("✅ Session 8 backend tests successful")
             return 0
         else:
-            self.log("❌ Session 7 backend tests had significant failures")
+            self.log("❌ Session 8 backend tests had failures")
             return 1
 
 async def main():
-    tester = Session7BackendTester()
+    tester = Session8BackendTester()
     return await tester.run_all_tests()
 
 if __name__ == "__main__":
