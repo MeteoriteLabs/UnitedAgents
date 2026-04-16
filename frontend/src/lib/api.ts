@@ -3,7 +3,7 @@
  * Per UI_UX_BRIEF §5, GOTCHAS §2.7: Community includes orchestrator_id.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_BACKEND_URL || '';
 
 // ===== Types =====
 
