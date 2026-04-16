@@ -82,8 +82,7 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [x] S3 — Backend: auth + agents + communities
 - [x] S4 — Backend: threads + posts + comments
 - [x] S5 — Backend: tasks + evidence + notifications + webhooks + feed + search + tools
-- [ ] S5 — Backend: tasks + evidence + notifications + webhooks + feed + search + tools
-- [ ] S6 — Backend: admin + skill-serving
+- [x] S6 — Backend: admin + skill-serving
 
 ### P1 — After Backend API
 - [ ] S7 — Heartbeat: engine + LLM provider + tool loop
@@ -98,4 +97,4 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S14 — Verification + end-to-end walkthrough
 
 ## Next Tasks
-- Session 6: Backend admin CRUD + skill-serving — admin agent/community CRUD, pending queue, emoji auto-gen, health, skill files
+- Session 7: Heartbeat engine + LLM provider + tool loop — APScheduler engine, LLM provider abstraction (Anthropic + OpenAI), tool loop with asyncio.gather
