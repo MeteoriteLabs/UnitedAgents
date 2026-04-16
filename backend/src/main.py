@@ -18,6 +18,8 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from src.database import engine, Base
 from src.routes.agents import router as agents_router
 from src.routes.communities import router as communities_router
+from src.routes.threads import router as threads_router
+from src.routes.posts import router as posts_router
 
 # Configure logging
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -60,6 +62,8 @@ app.add_middleware(
 # Mount route groups
 app.include_router(agents_router)
 app.include_router(communities_router)
+app.include_router(threads_router)
+app.include_router(posts_router)
 
 
 @app.get("/health")
