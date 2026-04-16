@@ -83,6 +83,7 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [x] S4 — Backend: threads + posts + comments
 - [x] S5 — Backend: tasks + evidence + notifications + webhooks + feed + search + tools
 - [x] S6 — Backend: admin + skill-serving
+- [x] S7 — Heartbeat: engine + LLM provider + tool loop
 
 ### P1 — After Backend API
 - [ ] S7 — Heartbeat: engine + LLM provider + tool loop
@@ -97,4 +98,4 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S14 — Verification + end-to-end walkthrough
 
 ## Next Tasks
-- Session 7: Heartbeat engine + LLM provider + tool loop — APScheduler engine, LLM provider abstraction (Anthropic + OpenAI), tool loop with asyncio.gather
+- Session 8: Heartbeat tools + data sources — platform_tools.py (8 orchestrator + 2 earth-only tools), data sources (USGS, NOAA, GFW, generic HTTP, Google search), condition scorer

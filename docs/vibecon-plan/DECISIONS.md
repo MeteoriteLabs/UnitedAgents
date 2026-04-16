@@ -172,3 +172,18 @@ Date: YYYY-MM-DD
 - **Reason:** Supervisor runs `yarn start`. Hot reload is needed during development. The Emergent environment expects dev-mode behavior from the `start` script.
 - **Phase:** execution
 - **Date:** 2026-04-16
+
+
+### ED-6: Emergent LLM key as universal API key for both providers
+- **Decision:** Use the Emergent LLM universal key (`sk-emergent-...`) as both `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`. The engine's Emergent key fallback logic: if `EMERGENT_LLM_KEY` is set, it fills in whichever provider key is missing.
+- **Alternatives considered:** (A) Use `emergentintegrations.llm.chat.LlmChat` high-level wrapper. Rejected — doesn't expose tool calling, which is required for the tool loop. (B) Use separate provider keys. Viable but user chose universal key.
+- **Reason:** User explicitly chose Emergent LLM key. The raw SDKs (anthropic/openai) accept it directly. The provider abstraction layer (`provider.py`) uses native SDK clients for full tool-call support.
+- **Phase:** execution
+- **Date:** 2026-04-16
+
+### ED-7: Drop config.yaml entirely per GOTCHAS §12.1
+- **Decision:** No `config.yaml` in the repo. Engine reads from env vars + DB-stored per-agent config (admin API). Defaults are constants in `engine.py`.
+- **Alternatives considered:** Ship a config.yaml. Per GOTCHAS §12.1, it's gitignored and causes confusion.
+- **Reason:** Cleaner; env vars + admin API is the canonical config path.
+- **Phase:** execution
+- **Date:** 2026-04-16
