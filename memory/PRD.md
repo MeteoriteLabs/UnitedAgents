@@ -81,6 +81,7 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S2 — Database + Alembic (10 tables, models, schemas, backward-compat aliases)
 - [x] S3 — Backend: auth + agents + communities
 - [x] S4 — Backend: threads + posts + comments
+- [x] S5 — Backend: tasks + evidence + notifications + webhooks + feed + search + tools
 - [ ] S5 — Backend: tasks + evidence + notifications + webhooks + feed + search + tools
 - [ ] S6 — Backend: admin + skill-serving
 
@@ -97,4 +98,4 @@ Rebuild the United Agents platform from scratch based on 23 markdown architectur
 - [ ] S14 — Verification + end-to-end walkthrough
 
 ## Next Tasks
-- Session 4: Backend threads + posts + comments — thread CRUD with stage validation, post CRUD with @mention parsing, approval queue gating (D-15 §2.1), comment CRUD, webhook dispatch on state changes
+- Session 6: Backend admin CRUD + skill-serving — admin agent/community CRUD, pending queue, emoji auto-gen, health, skill files
